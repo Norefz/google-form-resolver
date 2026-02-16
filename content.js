@@ -1,39 +1,39 @@
+// content.js
 const API_URL = "http://localhost:3000/api/analyze-question";
 
-function injectAIButtons() {
-  // Google Forms question container selector
-  const containers = document.querySelectorAll(".geS5n");
+function injectButtons() {
+  // Google Forms question container
+  const questions = document.querySelectorAll(".geS5n");
 
-  containers.forEach((container) => {
-    if (container.querySelector(".ai-assist-container")) return;
+  questions.forEach((container) => {
+    if (container.querySelector(".ai-btn")) return;
 
-    // Create wrapper
-    const wrapper = document.createElement("div");
-    wrapper.className = "ai-assist-container";
-    wrapper.style =
-      "margin-top: 15px; border-top: 1px dashed #ccc; padding-top: 10px;";
-
-    // Create Button
     const btn = document.createElement("button");
     btn.innerText = "Get AI Answer ✨";
+    btn.className = "ai-btn";
     btn.style =
-      "background: #1a73e8; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold;";
+      "margin-top: 10px; padding: 8px; cursor: pointer; background: #673ab7; color: white; border: none; border-radius: 4px;";
 
-    // Create Result Area (Hidden by default)
     const resultDiv = document.createElement("div");
     resultDiv.style =
-      "display: none; margin-top: 10px; font-size: 13px; color: #333; line-height: 1.4;";
+      "display: none; margin-top: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; background: #fafafa;";
 
     btn.onclick = async () => {
-      const questionText = container.querySelector(".M7eC3")?.innerText;
-      const optionTexts = Array.from(container.querySelectorAll(".aDTYp")).map(
-        (el) => el.innerText,
-      );
+      // Updated Selectors: tries role="heading" first, then common classes
+      const questionText =
+        container.querySelector('[role="heading"]')?.innerText ||
+        container.querySelector(".M7eC3")?.innerText;
 
-      if (!questionText) return;
+      const optionTexts = Array.from(
+        container.querySelectorAll(".aDTYp, .office-form-question-choice-text"),
+      ).map((el) => el.innerText);
+
+      if (!questionText) {
+        alert("Could not find question text. Please check the console.");
+        return;
+      }
 
       btn.innerText = "Analyzing...";
-      btn.disabled = true;
 
       try {
         const response = await fetch(API_URL, {
@@ -46,28 +46,29 @@ function injectAIButtons() {
         });
         const data = await response.json();
 
-        // Update UI with Toggle logic
         resultDiv.innerHTML = `
-          <p><strong>Answer:</strong> ${data.correct_answer}</p>
-          <div style="background: #f1f3f4; padding: 10px; border-left: 4px solid #1a73e8; margin-top: 5px;">
-            <strong>Reasoning:</strong><br>${data.reasoning}
-          </div>
-          <p style="font-size: 10px; color: gray;">Confidence: ${data.confidence}</p>
-        `;
+                    <p><strong>Answer:</strong> ${data.correct_answer}</p>
+                    <button id="toggle-reason" style="font-size: 11px; cursor: pointer;">Why this answer?</button>
+                    <p id="reason-text" style="display: none; margin-top: 5px; color: #555;">${data.reasoning}</p>
+                `;
         resultDiv.style.display = "block";
+
+        resultDiv.querySelector("#toggle-reason").onclick = () => {
+          const rText = resultDiv.querySelector("#reason-text");
+          rText.style.display =
+            rText.style.display === "none" ? "block" : "none";
+        };
       } catch (err) {
-        alert("Server Error. Make sure backend is running.");
+        console.error(err);
+        alert("Connection to backend failed!");
       } finally {
-        btn.innerText = "Refresh AI ✨";
-        btn.disabled = false;
+        btn.innerText = "Get AI Answer ✨";
       }
     };
 
-    wrapper.appendChild(btn);
-    wrapper.appendChild(resultDiv);
-    container.appendChild(wrapper);
+    container.appendChild(btn);
+    container.appendChild(resultDiv);
   });
 }
 
-// Check for new questions every 2 seconds (for long forms)
-setInterval(injectAIButtons, 2000);
+setInterval(injectButtons, 2000);
