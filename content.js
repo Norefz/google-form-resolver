@@ -9,7 +9,7 @@ function injectButtons() {
     if (container.querySelector(".ai-btn")) return;
 
     const btn = document.createElement("button");
-    btn.innerText = "Get AI Answer ✨";
+    btn.innerText = "Get AI Answer DAmn It ✨";
     btn.className = "ai-btn";
     btn.style =
       "margin-top: 10px; padding: 8px; cursor: pointer; background: #673ab7; color: white; border: none; border-radius: 4px;";
