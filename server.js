@@ -1,51 +1,42 @@
-// server.js
 const express = require("express");
 const cors = require("cors");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 require("dotenv").config();
 
 const app = express();
-app.use(cors()); // Crucial: Allows the Extension to talk to this server
+app.use(cors());
 app.use(express.json());
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-app.post("/api/analyze-question", async (req, res) => {
-  console.log("--- Request Received ---");
+app.post("/api/solve", async (req, res) => {
+  console.log("Request masuk untuk soal:", req.body.question);
   try {
     const { question, options } = req.body;
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-    const prompt = `
-            Act as an educator. Analyze this multiple-choice question:
-            Question: "${question}"
-            Options: ${options.join(", ")}
-
-            Return ONLY a JSON object:
-            {
-              "correct_answer": "text of the answer",
-              "reasoning": "explanation of why it is correct",
-              "confidence": "0-100%"
-            }
-        `;
+    // Prompt yang fleksibel untuk pilihan ganda maupun essay
+    const prompt = `Berikan jawaban untuk pertanyaan berikut. 
+        Pertanyaan: "${question}"
+        Pilihan (jika ada): ${options.length > 0 ? options.join(", ") : "Tidak ada (Soal Essay)"}
+        
+        Berikan respon dalam format JSON murni: 
+        {"answer": "jawaban singkat", "reason": "penjelasan singkat"}`;
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
-    // Removes markdown code blocks if the AI includes them
     const text = response
       .text()
       .replace(/```json|```/g, "")
       .trim();
 
-    console.log("Gemini Response:", text);
     res.json(JSON.parse(text));
   } catch (error) {
-    console.error("Error:", error);
-    res.status(500).json({ error: "Failed to process request" });
+    console.error("Gemini Error:", error.message);
+    res
+      .status(500)
+      .json({ answer: "Gagal terhubung ke AI", reason: error.message });
   }
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () =>
-  console.log(`Backend running on http://localhost:${PORT}`),
-);
+app.listen(3000, () => console.log("✅ Server aktif di port 3000"));

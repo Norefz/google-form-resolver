@@ -1,74 +1,76 @@
-// content.js
-const API_URL = "http://localhost:3000/api/analyze-question";
+const API_URL = "http://localhost:3000/api/solve";
 
-function injectButtons() {
-  // Google Forms question container
-  const questions = document.querySelectorAll(".geS5n");
+function injectAI() {
+  const blocks = document.querySelectorAll('.geS5n, div[role="listitem"]');
 
-  questions.forEach((container) => {
-    if (container.querySelector(".ai-btn")) return;
+  blocks.forEach((block) => {
+    if (block.querySelector(".gemini-btn")) return;
 
     const btn = document.createElement("button");
-    btn.innerText = "Get AI Answer DAmn It ✨";
-    btn.className = "ai-btn";
+    btn.innerText = "Get AI Answer ✨";
+    btn.className = "gemini-btn";
     btn.style =
-      "margin-top: 10px; padding: 8px; cursor: pointer; background: #673ab7; color: white; border: none; border-radius: 4px;";
+      "margin: 10px; padding: 10px; background: #673ab7; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;";
 
-    const resultDiv = document.createElement("div");
-    resultDiv.style =
-      "display: none; margin-top: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; background: #fafafa;";
+    const resultDisplay = document.createElement("div");
+    resultDisplay.style =
+      "display: none; margin: 10px; padding: 15px; border-left: 5px solid #673ab7; background: #f3f0ff; border-radius: 4px; color: #333;";
 
-    btn.onclick = async () => {
-      // Updated Selectors: tries role="heading" first, then common classes
-      const questionText =
-        container.querySelector('[role="heading"]')?.innerText ||
-        container.querySelector(".M7eC3")?.innerText;
+    btn.onclick = async (e) => {
+      e.preventDefault();
 
-      const optionTexts = Array.from(
-        container.querySelectorAll(".aDTYp, .office-form-question-choice-text"),
-      ).map((el) => el.innerText);
+      // Selector yang lebih luas untuk Pertanyaan
+      const qEl =
+        block.querySelector('[role="heading"]') ||
+        block.querySelector('div[dir="auto"]') ||
+        block.querySelector(".M7eC3");
 
-      if (!questionText) {
-        alert("Could not find question text. Please check the console.");
+      // Selector untuk Pilihan Ganda
+      const oEls = Array.from(
+        block.querySelectorAll(
+          '[role="radio"], [role="checkbox"], .aDTYp, .docssharedWizToggleLabeledLabelText',
+        ),
+      );
+
+      const question = qEl ? qEl.innerText.trim() : null;
+      const options = oEls
+        .map((el) => el.innerText.trim())
+        .filter((t) => t.length > 0);
+
+      console.log("Scraped Question:", question);
+      console.log("Scraped Options:", options);
+
+      // PERBAIKAN: Jangan blokir jika options kosong (mungkin soal essay)
+      if (!question) {
+        alert("Gagal mengambil teks pertanyaan.");
         return;
       }
 
-      btn.innerText = "Analyzing...";
-
+      btn.innerText = "Thinking... 🧠";
       try {
-        const response = await fetch(API_URL, {
+        const res = await fetch(API_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            question: questionText,
-            options: optionTexts,
-          }),
+          body: JSON.stringify({ question, options }),
         });
-        const data = await response.json();
+        const data = await res.json();
 
-        resultDiv.innerHTML = `
-                    <p><strong>Answer:</strong> ${data.correct_answer}</p>
-                    <button id="toggle-reason" style="font-size: 11px; cursor: pointer;">Why this answer?</button>
-                    <p id="reason-text" style="display: none; margin-top: 5px; color: #555;">${data.reasoning}</p>
+        resultDisplay.innerHTML = `
+                    <div style="margin-bottom: 8px;"><strong>Jawaban AI:</strong><br>${data.answer}</div>
+                    <div style="font-size: 0.85em; color: #666; border-top: 1px solid #ccc; padding-top: 5px;">
+                        <strong>Penjelasan:</strong><br>${data.reason}
+                    </div>
                 `;
-        resultDiv.style.display = "block";
-
-        resultDiv.querySelector("#toggle-reason").onclick = () => {
-          const rText = resultDiv.querySelector("#reason-text");
-          rText.style.display =
-            rText.style.display === "none" ? "block" : "none";
-        };
+        resultDisplay.style.display = "block";
       } catch (err) {
-        console.error(err);
-        alert("Connection to backend failed!");
+        alert("Server Node.js mati atau error! Cek terminal.");
       } finally {
         btn.innerText = "Get AI Answer ✨";
       }
     };
 
-    container.appendChild(btn);
-    container.appendChild(resultDiv);
+    block.appendChild(btn);
+    block.appendChild(resultDisplay);
   });
 }
-
-setInterval(injectButtons, 2000);
+setInterval(injectAI, 2000);
