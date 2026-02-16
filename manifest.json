@@ -1,8 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "Gemini Form Resolver",
-  "version": "1.0",
+  "name": "AI Education Assistant",
+  "version": "1.1",
   "permissions": ["activeTab"],
+  "host_permissions": ["http://localhost:3000/*"],
   "content_scripts": [
     {
       "matches": ["https://docs.google.com/forms/*"],
