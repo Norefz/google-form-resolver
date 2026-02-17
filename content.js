@@ -7,25 +7,23 @@ function injectAI() {
     if (block.querySelector(".gemini-btn")) return;
 
     const btn = document.createElement("button");
-    btn.innerText = "Get AI Answer ✨";
+    btn.innerText = "Tanya Gemini ✨";
     btn.className = "gemini-btn";
     btn.style =
       "margin: 10px; padding: 10px; background: #673ab7; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;";
 
-    const resultDisplay = document.createElement("div");
-    resultDisplay.style =
+    const resultDiv = document.createElement("div");
+    resultDiv.style =
       "display: none; margin: 10px; padding: 15px; border-left: 5px solid #673ab7; background: #f3f0ff; border-radius: 4px; color: #333;";
 
     btn.onclick = async (e) => {
       e.preventDefault();
 
-      // Selector yang lebih luas untuk Pertanyaan
+      // Mencari teks soal
       const qEl =
         block.querySelector('[role="heading"]') ||
-        block.querySelector('div[dir="auto"]') ||
-        block.querySelector(".M7eC3");
-
-      // Selector untuk Pilihan Ganda
+        block.querySelector('div[dir="auto"]');
+      // Mencari pilihan jawaban
       const oEls = Array.from(
         block.querySelectorAll(
           '[role="radio"], [role="checkbox"], .aDTYp, .docssharedWizToggleLabeledLabelText',
@@ -37,40 +35,30 @@ function injectAI() {
         .map((el) => el.innerText.trim())
         .filter((t) => t.length > 0);
 
-      console.log("Scraped Question:", question);
-      console.log("Scraped Options:", options);
+      if (!question) return alert("Soal tidak terdeteksi.");
 
-      // PERBAIKAN: Jangan blokir jika options kosong (mungkin soal essay)
-      if (!question) {
-        alert("Gagal mengambil teks pertanyaan.");
-        return;
-      }
-
-      btn.innerText = "Thinking... 🧠";
+      btn.innerText = "Mencari Jawaban...";
       try {
         const res = await fetch(API_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ question, options }),
         });
-        const data = await res.json();
 
-        resultDisplay.innerHTML = `
-                    <div style="margin-bottom: 8px;"><strong>Jawaban AI:</strong><br>${data.answer}</div>
-                    <div style="font-size: 0.85em; color: #666; border-top: 1px solid #ccc; padding-top: 5px;">
-                        <strong>Penjelasan:</strong><br>${data.reason}
-                    </div>
-                `;
-        resultDisplay.style.display = "block";
+        const data = await res.json();
+        resultDiv.innerHTML = `<strong>Jawaban:</strong> ${data.answer}<br><small><strong>Penjelasan:</strong> ${data.reason}</small>`;
+        resultDiv.style.display = "block";
       } catch (err) {
-        alert("Server Node.js mati atau error! Cek terminal.");
+        alert(
+          "Koneksi ke Server Gagal! Pastikan 'node server.js' sedang jalan di terminal.",
+        );
       } finally {
-        btn.innerText = "Get AI Answer ✨";
+        btn.innerText = "Tanya Gemini ✨";
       }
     };
 
     block.appendChild(btn);
-    block.appendChild(resultDisplay);
+    block.appendChild(resultDiv);
   });
 }
 setInterval(injectAI, 2000);
