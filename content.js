@@ -65,38 +65,44 @@ function injectAI() {
 
         if (data.type === "multiple") {
           let clicked = false;
-          const cleanAnswer = data.answer.toLowerCase().trim();
+          // Bersihkan jawaban AI dari karakter aneh dan ambil intinya
+          const aiAnswer = data.answer.toLowerCase().trim();
 
           for (let row of optionRows) {
             const rowText = row.innerText.toLowerCase().trim();
 
-            // Cocokkan teks atau huruf depannya (misal "A. Dasar Negara")
-            if (
-              rowText.includes(cleanAnswer) ||
-              cleanAnswer.includes(rowText)
-            ) {
-              // Klik label teksnya
-              row.click();
+            // LOGIKA PENCOCOKAN:
+            // 1. Cek apakah teks opsi mengandung jawaban AI (misal: "B. 1 Juni" mengandung "1 Juni")
+            // 2. Cek apakah jawaban AI mengandung teks opsi
+            if (rowText.includes(aiAnswer) || aiAnswer.includes(rowText)) {
+              // TARGET KLIK: Kita cari elemen yang bisa diklik (role radio)
+              const clickable =
+                row.closest('[role="radio"], [role="checkbox"], .uMCH9b') ||
+                row;
 
-              // Cari elemen radio/checkbox di dalam baris tersebut untuk dipastikan terklik
-              const inputTarget =
-                row.closest(".uMCH9b") ||
-                row.parentElement.querySelector(
-                  '[role="radio"], [role="checkbox"]',
-                );
-              if (inputTarget) inputTarget.click();
+              console.log("Mencoba klik:", rowText);
+
+              // Lakukan simulasi klik manusia secara lengkap
+              clickable.click();
+              clickable.dispatchEvent(
+                new MouseEvent("mousedown", { bubbles: true }),
+              );
+              clickable.dispatchEvent(
+                new MouseEvent("mouseup", { bubbles: true }),
+              );
 
               clicked = true;
               break;
             }
           }
-          btn.innerText = clicked ? "Solved! ✅" : "Check Reason ⚠️";
-          btn.style.background = clicked ? "#188038" : "#f9ab00";
-        } else if (textInput) {
-          textInput.value = data.answer;
-          textInput.dispatchEvent(new Event("input", { bubbles: true }));
-          btn.innerText = "Typed! ✍️";
-          btn.style.background = "#188038";
+
+          if (!clicked) {
+            btn.innerText = "Match Failed ⚠️";
+            btn.style.background = "#f9ab00";
+          } else {
+            btn.innerText = "Solved! ✅";
+            btn.style.background = "#188038";
+          }
         }
       } catch (err) {
         btn.innerText = "Error ❌";
