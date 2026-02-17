@@ -1,83 +1,123 @@
 const API_URL = "http://localhost:3000/api/solve";
 
 function injectAI() {
-  // Select all question containers in Google Forms
-  const blocks = document.querySelectorAll('.geS5n, div[role="listitem"]');
+  // Gunakan selector yang lebih spesifik untuk "kotak soal" Google Forms
+  // Kita pilih elemen .geS5n saja karena itu adalah kontainer utama per soal
+  const blocks = document.querySelectorAll(".geS5n");
 
   blocks.forEach((block) => {
-    if (block.querySelector(".gemini-btn")) return;
+    // 1. CEK ANTI-DUPLIKASI (Dataset diletakkan di elemen soal utama)
+    if (block.dataset.aiInjected === "true") return;
+    block.dataset.aiInjected = "true";
+
+    // 2. CEK APAKAH TOMBOL SUDAH ADA (Double Check secara fisik)
+    if (block.querySelector(".ai-solve-container")) return;
+
+    const container = document.createElement("div");
+    container.className = "ai-solve-container";
+    container.style =
+      "margin-top: 15px; padding: 10px 0; border-top: 1px dashed #dadce0; width: 100%;";
 
     const btn = document.createElement("button");
     btn.innerText = "Solve with AI ✨";
-    btn.className = "gemini-btn";
     btn.style =
-      "margin: 10px; padding: 10px; background: #1a73e8; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-family: 'Google Sans',Roboto,Arial,sans-serif;";
+      "padding: 10px 20px; background: #1a73e8; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500; font-family: 'Google Sans', Roboto, Arial; font-size: 14px; box-shadow: 0 1px 3px rgba(60,64,67,0.3); transition: background 0.2s;";
+
+    const reasonBox = document.createElement("div");
+    reasonBox.className = "ai-reason-box";
+    reasonBox.style =
+      "display: none; margin-top: 10px; padding: 12px; background: #f8f9fa; border-radius: 8px; font-size: 13px; line-height: 1.5; color: #3c4043; border: 1px solid #dadce0;";
 
     btn.onclick = async (e) => {
       e.preventDefault();
+      e.stopPropagation();
 
-      // Scrape question and options
-      const qEl =
-        block.querySelector('[role="heading"]') ||
-        block.querySelector('div[dir="auto"]');
-      const optionElements = Array.from(
-        block.querySelectorAll(
-          '.aDTYp, .docssharedWizToggleLabeledLabelText, [role="radio"], [role="checkbox"]',
-        ),
+      // Temukan Pertanyaan (Spesifik Google Forms)
+      const qEl = block.querySelector(".M7eMe");
+
+      // Temukan Opsi (Elemen yang memuat teks jawaban)
+      const optionRows = Array.from(
+        block.querySelectorAll(".docssharedWizToggleLabeledLabelText, .aDTYp"),
       );
-      const options = optionElements
+      const optionsText = optionRows
         .map((el) => el.innerText.trim())
-        .filter((t) => t.length > 0);
+        .filter((t) => t !== "");
 
-      // Detect input field for essay questions
       const textInput = block.querySelector('input[type="text"], textarea');
 
-      if (!qEl) return;
+      btn.innerText = "Thinking...";
+      btn.disabled = true;
 
-      btn.innerText = "Processing... ⚡";
       try {
         const res = await fetch(API_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ question: qEl.innerText.trim(), options }),
+          body: JSON.stringify({
+            question: qEl ? qEl.innerText.trim() : "Question not found",
+            options: optionsText,
+          }),
         });
 
         const data = await res.json();
 
-        if (data.type === "multiple") {
-          // Automatically click the correct option
-          let clicked = false;
-          optionElements.forEach((el) => {
-            if (el.innerText.trim() === data.answer) {
-              el.click();
-              clicked = true;
-            }
-          });
-          if (!clicked)
-            console.log("AI suggested an option not found on screen.");
-        } else if (textInput) {
-          // Automatically type the essay answer
-          textInput.value = data.answer;
-          // Trigger input event so Google Forms recognizes the change
-          textInput.dispatchEvent(new Event("input", { bubbles: true }));
-        }
+        reasonBox.innerHTML = `<div style="margin-bottom:5px; color:#188038; font-weight:bold;">AI Result: ${data.answer}</div><div style="color:#5f6368; font-style:italic;">${data.reason}</div>`;
+        reasonBox.style.display = "block";
 
-        btn.innerText = "Solved! ✅";
-        btn.style.background = "#0f9d58";
+        if (data.type === "multiple") {
+          let clicked = false;
+          const cleanAnswer = data.answer.toLowerCase().trim();
+
+          for (let row of optionRows) {
+            const rowText = row.innerText.toLowerCase().trim();
+
+            // Cocokkan teks atau huruf depannya (misal "A. Dasar Negara")
+            if (
+              rowText.includes(cleanAnswer) ||
+              cleanAnswer.includes(rowText)
+            ) {
+              // Klik label teksnya
+              row.click();
+
+              // Cari elemen radio/checkbox di dalam baris tersebut untuk dipastikan terklik
+              const inputTarget =
+                row.closest(".uMCH9b") ||
+                row.parentElement.querySelector(
+                  '[role="radio"], [role="checkbox"]',
+                );
+              if (inputTarget) inputTarget.click();
+
+              clicked = true;
+              break;
+            }
+          }
+          btn.innerText = clicked ? "Solved! ✅" : "Check Reason ⚠️";
+          btn.style.background = clicked ? "#188038" : "#f9ab00";
+        } else if (textInput) {
+          textInput.value = data.answer;
+          textInput.dispatchEvent(new Event("input", { bubbles: true }));
+          btn.innerText = "Typed! ✍️";
+          btn.style.background = "#188038";
+        }
       } catch (err) {
         btn.innerText = "Error ❌";
-        console.error("Connection failed to local server.");
+        btn.style.background = "#d93025";
       } finally {
+        btn.disabled = false;
         setTimeout(() => {
           btn.innerText = "Solve with AI ✨";
           btn.style.background = "#1a73e8";
-        }, 3000);
+        }, 4000);
       }
     };
 
-    block.appendChild(btn);
+    container.appendChild(btn);
+    container.appendChild(reasonBox);
+
+    // MASUKKAN KE DALAM BLOK (Pastikan hanya satu tempat)
+    // .geS5n adalah wrapper utama soal di Google Forms
+    block.appendChild(container);
   });
 }
 
-// Re-run injection every 2 seconds to handle dynamic loading
-setInterval(injectAI, 2000);
+// Jalankan injeksi
+setInterval(injectAI, 1500);
