@@ -29,7 +29,6 @@ function injectAI() {
     if (block.dataset.aiInjected === "true") return;
     block.dataset.aiInjected = "true";
 
-    // --- UI TOMBOL ---
     const container = document.createElement("div");
     container.className = "ai-solve-container";
     container.style =
