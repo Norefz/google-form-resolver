@@ -251,7 +251,20 @@ function simulateClick(element) {
   element.dispatchEvent(new MouseEvent("click", eventOptions));
   if (element.tagName === "INPUT") element.checked = true;
 }
+// --- LISTENER UNTUK POPUP ---
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === "solveAll") {
+    solveAllQuestions(); // Memanggil fungsi solveAll yang sudah kita buat sebelumnya
+    sendResponse({ status: "started" });
+  }
 
+  if (request.action === "getUserInfo") {
+    // Mencoba mengambil email/nama dari header Google Form
+    const emailEl = document.querySelector(".Dq93zc");
+    const name = emailEl ? emailEl.innerText.split("@")[0] : "Student";
+    sendResponse({ name: name });
+  }
+});
 // --- INISIALISASI ---
 setInterval(injectAI, 1500);
 createGlobalBar();
