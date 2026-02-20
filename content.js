@@ -10,26 +10,17 @@ const SELECTORS = {
   textInput: 'input:not([type="hidden"]), textarea.KHxj8b, textarea.tL9Q4c',
 };
 
-// --- STATE GLOBAL ---
-let isSolvingAll = false;
-
 // --- CSS STYLES ---
 const style = document.createElement("style");
 style.innerHTML = `
   .ai-global-bar {
-    position: fixed;
-    top: 0; left: 0; width: 100%;
-    background: #1a73e8; color: white;
-    padding: 12px; z-index: 10000;
-    display: none; /* SEMBUNYIKAN DEFAULT */
-    justify-content: center; align-items: center;
+    position: fixed; top: 0; left: 0; width: 100%;
+    background: #1a73e8; color: white; padding: 12px; z-index: 10000;
+    display: none; justify-content: center; align-items: center;
     box-shadow: 0 2px 10px rgba(0,0,0,0.3);
     font-family: 'Google Sans', Roboto, Arial, sans-serif;
   }
-  .ai-global-info {
-    font-weight: bold;
-    display: flex; align-items: center; gap: 10px;
-  }
+  .ai-global-info { font-weight: bold; display: flex; align-items: center; gap: 10px; }
 `;
 document.head.appendChild(style);
 
@@ -43,7 +34,6 @@ async function solveAllQuestions() {
 
   if (allButtons.length === 0) return;
 
-  // MUNCULKAN BAR SAAT PROSES MULAI
   globalBar.style.display = "flex";
   document.body.style.marginTop = "50px";
 
@@ -54,13 +44,10 @@ async function solveAllQuestions() {
     infoText.innerText = `Solving: ${i + 1} / ${allButtons.length} Questions... ⏳`;
     btn.scrollIntoView({ behavior: "smooth", block: "center" });
     btn.click();
-
-    await new Promise((resolve) => setTimeout(resolve, 2100)); // Jeda aman 30 RPM
+    await new Promise((resolve) => setTimeout(resolve, 2100));
   }
 
   infoText.innerText = "All Problems Solved! ✨";
-
-  // SEMBUNYIKAN LAGI SETELAH 3 DETIK
   setTimeout(() => {
     globalBar.style.display = "none";
     document.body.style.marginTop = "0px";
@@ -70,14 +57,8 @@ async function solveAllQuestions() {
 // --- FUNGSI INJEKSI TOMBOL PER SOAL ---
 function injectAI() {
   const blocks = document.querySelectorAll(SELECTORS.questionBlock);
-
   blocks.forEach((block) => {
     if (block.dataset.aiInjected === "true") return;
-    if (block.querySelector(".ai-solve-container")) {
-      block.dataset.aiInjected = "true";
-      return;
-    }
-
     block.dataset.aiInjected = "true";
 
     const container = document.createElement("div");
@@ -88,35 +69,22 @@ function injectAI() {
     const btn = document.createElement("button");
     btn.innerText = "Solve with AI ✨";
     btn.style =
-      "padding: 8px 16px; background: #1a73e8; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; font-family: 'Google Sans', Roboto, Arial, sans-serif;";
+      "padding: 8px 16px; background: #1a73e8; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;";
 
     const statusBox = document.createElement("div");
-    statusBox.className = "ai-status-box";
     statusBox.style =
       "display: none; margin-top: 8px; font-size: 13px; color: #444; padding: 10px; background: #f8f9fa; border-radius: 4px; border-left: 4px solid #1a73e8;";
 
     btn.onclick = async (e) => {
       e.preventDefault();
-      e.stopPropagation();
-
       const qEl = block.querySelector(SELECTORS.questionText);
       const question = qEl ? qEl.innerText.trim() : "";
-      if (!question) {
-        updateStatus(statusBox, "❌ Soal tidak ditemukan", "red");
-        return;
-      }
-
       const labelEls = Array.from(
         block.querySelectorAll(SELECTORS.optionLabel),
       );
-      const optionsMap = labelEls.map((el, idx) => ({
-        index: idx,
-        text: el.innerText.trim(),
-        element: el,
-        cleanText: normalizeText(el.innerText),
-      }));
-
-      const optionsForPrompt = optionsMap.map((o) => `${o.index}. ${o.text}`);
+      const optionsForPrompt = labelEls.map(
+        (el, idx) => `${idx}. ${el.innerText.trim()}`,
+      );
 
       btn.innerText = "Thinking...";
       btn.disabled = true;
@@ -125,65 +93,38 @@ function injectAI() {
         const res = await fetch(API_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            question: question,
-            options: optionsForPrompt,
-          }),
+          body: JSON.stringify({ question, options: optionsForPrompt }),
         });
-
         const data = await res.json();
-        updateStatus(
-          statusBox,
-          `<strong>AI:</strong> ${data.answer}`,
-          "#188038",
-        );
+        statusBox.innerHTML = `<strong>AI:</strong> ${data.answer}`;
+        statusBox.style.display = "block";
 
         let solved = false;
-
-        // LOGIKA ABC
-        if (optionsMap.length > 0) {
+        if (labelEls.length > 0) {
           const aiClean = normalizeText(data.answer);
-          const match = optionsMap.find((opt) => {
-            if (data.index !== undefined && data.index === opt.index)
-              return true;
-            return (
-              opt.cleanText.includes(aiClean) || aiClean.includes(opt.cleanText)
-            );
-          });
-
+          const match = labelEls.find(
+            (el) =>
+              normalizeText(el.innerText).includes(aiClean) ||
+              aiClean.includes(normalizeText(el.innerText)),
+          );
           if (match) {
-            const clickable = match.element.closest(SELECTORS.optionClickable);
-            simulateClick(clickable || match.element);
+            simulateClick(match.closest(SELECTORS.optionClickable) || match);
+            solved = true;
+          }
+        } else {
+          const input = block.querySelector(SELECTORS.textInput);
+          if (input) {
+            input.value = data.answer;
+            input.dispatchEvent(new Event("input", { bubbles: true }));
             solved = true;
           }
         }
-        // LOGIKA URAIAN
-        else {
-          const inputField = block.querySelector(SELECTORS.textInput);
-          if (inputField) {
-            inputField.value = data.answer;
-            inputField.dispatchEvent(new Event("input", { bubbles: true }));
-            inputField.dispatchEvent(new Event("change", { bubbles: true }));
-            inputField.focus();
-            inputField.blur();
-            solved = true;
-          }
-        }
-
-        btn.innerText = solved ? "Solved! ✅" : "Gagal Klik/Isi ⚠️";
+        btn.innerText = solved ? "Solved! ✅" : "Manual Check ⚠️";
         btn.style.background = solved ? "#188038" : "#f9ab00";
       } catch (err) {
-        console.error("AI Error:", err);
         btn.innerText = "Error ❌";
-        btn.style.background = "#d93025";
       } finally {
         btn.disabled = false;
-        setTimeout(() => {
-          if (!btn.innerText.includes("✅")) {
-            btn.innerText = "Solve with AI ✨";
-            btn.style.background = "#1a73e8";
-          }
-        }, 3000);
       }
     };
 
@@ -193,8 +134,7 @@ function injectAI() {
   });
 }
 
-// --- FUNGSI UI GLOBAL BAR ---
-// --- FUNGSI PROFIL & LISTENER ---
+// --- FUNGSI PROFIL & UI ---
 function createGlobalBar() {
   if (document.querySelector(".ai-global-bar")) return;
   const bar = document.createElement("div");
@@ -203,6 +143,7 @@ function createGlobalBar() {
   document.body.appendChild(bar);
 }
 
+// SATU LISTENER UNTUK SEMUA (MENGHINDARI BUG)
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "solveAll") {
     solveAllQuestions();
@@ -210,50 +151,51 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   if (request.action === "getUserInfo") {
+    // 1. CARI NAMA (Cari di elemen header atau aria-label akun)
+    let name = "Student";
     const emailEl = document.querySelector(".Dq93zc");
-    const name = emailEl ? emailEl.innerText.split("@")[0] : "Student";
-    // AMBIL FOTO PROFIL CHROME/GOOGLE
-    const imgEl = document.querySelector(
+    const accountCircle = document.querySelector('a[href*="SignOutOptions"]');
+
+    if (emailEl) {
+      name = emailEl.innerText.split("@")[0];
+    } else if (accountCircle && accountCircle.getAttribute("aria-label")) {
+      // Mengambil nama dari aria-label "Google Account: Nama User (email@gmail.com)"
+      const label = accountCircle.getAttribute("aria-label");
+      name = label.split(":")[1]?.split("(")[0]?.trim() || "Student";
+    }
+
+    // 2. CARI FOTO (Gunakan selector yang lebih luas & paksa ambil src)
+    const avatarSelectors = [
       'img[src*="googleusercontent.com/a/"]',
-    );
-    sendResponse({ name: name, avatar: imgEl ? imgEl.src : null });
-  }
-});
+      ".gb_A.gb_Ba img",
+      "img.gb_i",
+      ".gb_d img",
+      ".ahSpx img",
+    ];
 
-// --- FUNGSI BANTUAN ---
+    let avatarUrl = null;
+    for (let selector of avatarSelectors) {
+      const img = document.querySelector(selector);
+      if (img && img.src && img.src.includes("http")) {
+        avatarUrl = img.src;
+        break;
+      }
+    }
+
+    sendResponse({ name: name, avatar: avatarUrl });
+  }
+  return true;
+});
 function normalizeText(str) {
-  if (!str) return "";
-  return str.toLowerCase().replace(/[^a-z0-9]/g, "");
+  return str ? str.toLowerCase().replace(/[^a-z0-9]/g, "") : "";
 }
 
-function updateStatus(el, html, color) {
-  el.innerHTML = html;
-  el.style.display = "block";
-  el.style.borderLeft = `4px solid ${color}`;
+function simulateClick(el) {
+  const opts = { bubbles: true, cancelable: true, view: window };
+  el.dispatchEvent(new MouseEvent("mousedown", opts));
+  el.dispatchEvent(new MouseEvent("mouseup", opts));
+  el.dispatchEvent(new MouseEvent("click", opts));
 }
 
-function simulateClick(element) {
-  element.scrollIntoView({ behavior: "smooth", block: "center" });
-  const eventOptions = { bubbles: true, cancelable: true, view: window };
-  element.dispatchEvent(new MouseEvent("mousedown", eventOptions));
-  element.dispatchEvent(new MouseEvent("mouseup", eventOptions));
-  element.dispatchEvent(new MouseEvent("click", eventOptions));
-  if (element.tagName === "INPUT") element.checked = true;
-}
-// --- LISTENER UNTUK POPUP ---
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === "solveAll") {
-    solveAllQuestions(); // Memanggil fungsi solveAll yang sudah kita buat sebelumnya
-    sendResponse({ status: "started" });
-  }
-
-  if (request.action === "getUserInfo") {
-    // Mencoba mengambil email/nama dari header Google Form
-    const emailEl = document.querySelector(".Dq93zc");
-    const name = emailEl ? emailEl.innerText.split("@")[0] : "Student";
-    sendResponse({ name: name });
-  }
-});
-// --- INISIALISASI ---
 setInterval(injectAI, 1500);
 createGlobalBar();

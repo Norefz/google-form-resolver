@@ -1,47 +1,49 @@
 document.addEventListener("DOMContentLoaded", function () {
-  const solveBtn = document.getElementById("solveAllBtn");
   const nameEl = document.getElementById("userName");
   const avatarEl = document.getElementById("avatarLetter");
+  const solveBtn = document.getElementById("solveAllBtn");
 
-  // Ambil info user dari halaman aktif
-  chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-    if (tabs[0]) {
+  function updateProfile() {
+    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+      if (!tabs[0]) return;
+
       chrome.tabs.sendMessage(
         tabs[0].id,
         { action: "getUserInfo" },
         function (response) {
-          if (response && response.name) {
-            const cleanName = response.name
-              .split("@")[0]
-              .replace(/[0-9.]/g, " ")
-              .trim();
+          if (chrome.runtime.lastError) return; // Menghindari error jika tab belum siap
+
+          if (response) {
+            // Format Nama: Huruf depan besar
+            const rawName = response.name.replace(/[0-9.]/g, " ").trim();
+            const cleanName =
+              rawName.charAt(0).toUpperCase() + rawName.slice(1);
             nameEl.innerText = cleanName;
-            avatarEl.innerText = cleanName.charAt(0).toUpperCase();
-          } else {
-            nameEl.innerText = "Guest User";
-            avatarEl.innerText = "G";
+
+            // Update Foto Profil
+            if (response.avatar) {
+              avatarEl.innerHTML = `<img src="${response.avatar}" style="width:100%; height:100%; border-radius:50%; object-fit:cover; border: 2px solid #fff;">`;
+              avatarEl.style.background = "transparent";
+              avatarEl.innerText = ""; // Hapus inisial
+            } else {
+              avatarEl.innerText = cleanName.charAt(0).toUpperCase();
+            }
           }
         },
       );
-    }
-  });
+    });
+  }
 
-  // Event klik Solve All
+  // Jalankan update profil
+  updateProfile();
+
+  // Tombol Solve All
   solveBtn.addEventListener("click", function () {
-    solveBtn.disabled = true;
-    solveBtn.innerText = "Working on it...";
-
+    this.disabled = true;
+    this.innerText = "Running... 🚀";
     chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-      if (tabs[0]) {
-        chrome.tabs.sendMessage(
-          tabs[0].id,
-          { action: "solveAll" },
-          function (response) {
-            // Tutup popup agar user bisa melihat prosesnya di layar
-            setTimeout(() => window.close(), 500);
-          },
-        );
-      }
+      chrome.tabs.sendMessage(tabs[0].id, { action: "solveAll" });
+      setTimeout(() => window.close(), 1000);
     });
   });
 });
