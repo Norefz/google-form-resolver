@@ -194,6 +194,7 @@ function injectAI() {
 }
 
 // --- FUNGSI UI GLOBAL BAR ---
+// --- FUNGSI PROFIL & LISTENER ---
 function createGlobalBar() {
   if (document.querySelector(".ai-global-bar")) return;
   const bar = document.createElement("div");
@@ -201,6 +202,23 @@ function createGlobalBar() {
   bar.innerHTML = `<div class="ai-global-info">Preparing AI... 🤖</div>`;
   document.body.appendChild(bar);
 }
+
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === "solveAll") {
+    solveAllQuestions();
+    sendResponse({ status: "started" });
+  }
+
+  if (request.action === "getUserInfo") {
+    const emailEl = document.querySelector(".Dq93zc");
+    const name = emailEl ? emailEl.innerText.split("@")[0] : "Student";
+    // AMBIL FOTO PROFIL CHROME/GOOGLE
+    const imgEl = document.querySelector(
+      'img[src*="googleusercontent.com/a/"]',
+    );
+    sendResponse({ name: name, avatar: imgEl ? imgEl.src : null });
+  }
+});
 
 // --- FUNGSI BANTUAN ---
 function normalizeText(str) {
