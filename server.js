@@ -12,41 +12,40 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 app.post("/api/solve", async (req, res) => {
   try {
     const { question, options } = req.body;
+    // Gunakan gemma-2-2b-it jika 3-1b masih error 400,
+    // tapi coba tetap gemma-3-1b-it dulu.
     const model = genAI.getGenerativeModel({ model: "gemma-3-1b-it" });
     const isMultipleChoice = options && options.length > 0;
 
-    // PROMPT RINGKAS: Menghapus instruksi panjang & field "reason"
-    const prompt = isMultipleChoice
-      ? `Q: ${question}\nOpts: ${options.join(" | ")}\nJSON: {"answer":"chosen_option_text"}`
-      : `Q: ${question}\nJSON: {"answer":"short_answer"}`;
+    // Prompt dibuat SEPEDAS mungkin agar dia tidak bertele-tele
+    const prompt = `Answer this question briefly.
+Question: ${question}
+${isMultipleChoice ? `Options: ${options.join(" | ")}` : ""}
+Output format: Just the answer text. No JSON, no explanation.`;
 
     const result = await model.generateContent({
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
-        // Kunci utama hemat: batasi output maksimal hanya ~30-40 token
-        maxOutputTokens: isMultipleChoice ? 20 : 50,
-        temperature: 0.1, // Biar jawaban konsisten dan gak 'halu'
+        maxOutputTokens: 30, // Sangat hemat token
+        temperature: 0.1,
       },
     });
 
-    const response = await result.response;
-    const text = response
-      .text()
-      .replace(/```json|```/g, "")
-      .trim();
+    const aiResponse = result.response.text().trim();
+    console.log("Gemma Response:", aiResponse);
 
-    // Mengembalikan JSON yang sesuai dengan kebutuhan frontend-mu
-    const parsed = JSON.parse(text);
-
-    // Kita tambahkan reason dummy/kosong agar content.js tidak error
+    // Kirim balik sebagai objek JSON ke extension agar tidak error parsing
     res.json({
-      answer: parsed.answer,
-      reason: "Optimized for tokens",
+      answer: aiResponse,
+      reason: "Success",
       type: isMultipleChoice ? "multiple" : "essay",
     });
   } catch (error) {
-    console.error("Token Error:", error.message);
-    res.status(500).json({ answer: "Error", reason: "Check console" });
+    console.error("Gemma Error:", error.message);
+    // Jika gemma-3-1b-it error 400, coba ganti ke gemini-1.5-flash-8b (sangat murah & hemat)
+    res
+      .status(500)
+      .json({ answer: "Gagal memproses soal", reason: error.message });
   }
 });
 
