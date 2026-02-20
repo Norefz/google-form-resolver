@@ -1,8 +1,7 @@
 const API_URL = "http://localhost:3000/api/solve";
 
-// --- KONFIGURASI SELECTOR (DISYEDERHANAKAN) ---
+// --- KONFIGURASI SELECTOR ---
 const SELECTORS = {
-  // Gunakan hanya .geS5n agar tidak mengenai elemen yang bertumpuk
   questionBlock: ".geS5n",
   questionText: '.M7eMe, [role="heading"]',
   optionLabel: ".docssharedWizToggleLabeledLabelText, .aDTYp, .OvPDhc",
@@ -11,25 +10,101 @@ const SELECTORS = {
   textInput: 'input:not([type="hidden"]), textarea.KHxj8b, textarea.tL9Q4c',
 };
 
+// --- STATE GLOBAL ---
+let isSolvingAll = false;
+
+// --- CSS STYLES ---
+const style = document.createElement("style");
+style.innerHTML = `
+  .ai-global-bar {
+    position: fixed;
+    top: 0; left: 0; width: 100%;
+    background: #1a73e8; color: white;
+    padding: 12px; z-index: 10000;
+    display: flex; justify-content: center; align-items: center;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    font-family: 'Google Sans', Roboto, Arial, sans-serif;
+    transition: all 0.3s ease;
+  }
+  .ai-global-btn {
+    background: #ffffff; color: #1a73e8;
+    border: none; padding: 6px 18px;
+    border-radius: 20px; cursor: pointer;
+    font-weight: bold; margin-left: 15px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  }
+  .ai-global-btn:hover { background: #f1f3f4; }
+  .ai-global-btn:disabled { background: #bdc1c6; color: #70757a; cursor: not-allowed; }
+  
+  /* Geser body sedikit ke bawah agar tidak tertutup bar */
+  body { margin-top: 50px !important; }
+`;
+document.head.appendChild(style);
+
+// --- FUNGSI UTAMA: SOLVE ALL ---
+async function solveAllQuestions() {
+  if (isSolvingAll) return;
+
+  const allButtons = Array.from(
+    document.querySelectorAll(".ai-solve-container button"),
+  );
+  if (allButtons.length === 0) {
+    alert(
+      "Belum ada tombol 'Solve with AI' yang terdeteksi. Tunggu sebentar atau scroll ke bawah.",
+    );
+    return;
+  }
+
+  const globalBtn = document.querySelector(".ai-global-btn");
+  isSolvingAll = true;
+  globalBtn.disabled = true;
+
+  for (let i = 0; i < allButtons.length; i++) {
+    const btn = allButtons[i];
+
+    // Jangan klik lagi jika sudah solved
+    if (btn.innerText.includes("✅")) continue;
+
+    globalBtn.innerText = `Solving Soal ${i + 1}/${allButtons.length}... ⏳`;
+
+    // Scroll ke soal agar terlihat (membantu stabilitas klik)
+    btn.scrollIntoView({ behavior: "smooth", block: "center" });
+
+    // Trigger klik pada tombol individu
+    btn.click();
+
+    // Beri jeda 2.5 detik per soal (agar tidak kena limit API/Rate Limit)
+    await new Promise((resolve) => setTimeout(resolve, 2500));
+  }
+
+  globalBtn.innerText = "All Solved! ✨";
+  globalBtn.style.background = "#34a853";
+  globalBtn.style.color = "white";
+  isSolvingAll = false;
+
+  setTimeout(() => {
+    globalBtn.innerText = "Solve All Problems ✨";
+    globalBtn.style.background = "white";
+    globalBtn.style.color = "#1a73e8";
+    globalBtn.disabled = false;
+  }, 5000);
+}
+
+// --- FUNGSI INJEKSI TOMBOL PER SOAL ---
 function injectAI() {
   const blocks = document.querySelectorAll(SELECTORS.questionBlock);
 
   blocks.forEach((block) => {
-    // 1. PENGECEKAN DATASET (Mencegah proses ulang)
     if (block.dataset.aiInjected === "true") return;
-
-    // 2. PENGECEKAN FISIK (Double Guard)
-    // Mencari apakah di dalam blok ini SUDAH ADA container tombol kita
     if (block.querySelector(".ai-solve-container")) {
-      block.dataset.aiInjected = "true"; // Tandai agar tidak dicek lagi
+      block.dataset.aiInjected = "true";
       return;
     }
 
-    // Tandai blok sudah diproses
     block.dataset.aiInjected = "true";
 
     const container = document.createElement("div");
-    container.className = "ai-solve-container"; // Class ini penting untuk pengecekan fisik di atas
+    container.className = "ai-solve-container";
     container.style =
       "margin-top: 10px; padding: 10px; border-top: 1px dashed #ccc; clear: both;";
 
@@ -127,41 +202,36 @@ function injectAI() {
       } finally {
         btn.disabled = false;
         setTimeout(() => {
-          btn.innerText = "Solve with AI ✨";
-          btn.style.background = "#1a73e8";
+          if (!btn.innerText.includes("✅")) {
+            btn.innerText = "Solve with AI ✨";
+            btn.style.background = "#1a73e8";
+          }
         }, 3000);
       }
     };
 
     container.appendChild(btn);
     container.appendChild(statusBox);
-
-    // Tempelkan tombol di bagian paling bawah blok soal agar konsisten
     block.appendChild(container);
   });
 }
-const style = document.createElement("style");
-style.innerHTML = `
-  .ai-global-bar {
-    position: fixed;
-    top: 0; left: 0; width: 100%;
-    background: #1a73e8; color: white;
-    padding: 10px; z-index: 9999;
-    display: flex; justify-content: center; align-items: center;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-    font-family: 'Google Sans', Roboto, Arial;
-  }
-  .ai-global-btn {
-    background: white; color: #1a73e8;
-    border: none; padding: 5px 15px;
-    border-radius: 4px; cursor: pointer;
-    font-weight: bold; margin-left: 15px;
-  }
-  .ai-global-btn:disabled { background: #ccc; cursor: not-allowed; }
-`;
-document.head.appendChild(style);
 
-// --- FUNGSI BANTUAN (TETAP SAMA) ---
+// --- FUNGSI UI GLOBAL BAR ---
+function createGlobalBar() {
+  if (document.querySelector(".ai-global-bar")) return;
+
+  const bar = document.createElement("div");
+  bar.className = "ai-global-bar";
+  bar.innerHTML = `
+    <span>AI Assistant Active 🤖</span>
+    <button class="ai-global-btn">Solve All Problems ✨</button>
+  `;
+
+  document.body.appendChild(bar);
+  bar.querySelector(".ai-global-btn").onclick = solveAllQuestions;
+}
+
+// --- FUNGSI BANTUAN ---
 function normalizeText(str) {
   if (!str) return "";
   return str.toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -182,4 +252,6 @@ function simulateClick(element) {
   if (element.tagName === "INPUT") element.checked = true;
 }
 
+// --- INISIALISASI ---
 setInterval(injectAI, 1500);
+createGlobalBar();
