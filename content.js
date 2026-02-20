@@ -140,6 +140,26 @@ function injectAI() {
     block.appendChild(container);
   });
 }
+const style = document.createElement("style");
+style.innerHTML = `
+  .ai-global-bar {
+    position: fixed;
+    top: 0; left: 0; width: 100%;
+    background: #1a73e8; color: white;
+    padding: 10px; z-index: 9999;
+    display: flex; justify-content: center; align-items: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    font-family: 'Google Sans', Roboto, Arial;
+  }
+  .ai-global-btn {
+    background: white; color: #1a73e8;
+    border: none; padding: 5px 15px;
+    border-radius: 4px; cursor: pointer;
+    font-weight: bold; margin-left: 15px;
+  }
+  .ai-global-btn:disabled { background: #ccc; cursor: not-allowed; }
+`;
+document.head.appendChild(style);
 
 // --- FUNGSI BANTUAN (TETAP SAMA) ---
 function normalizeText(str) {
