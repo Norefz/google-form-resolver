@@ -24,6 +24,39 @@ style.innerHTML = `
 `;
 document.head.appendChild(style);
 
+// --- FUNGSI PEMBANTU: CARI AVATAR GOOGLE ---
+function findGoogleAvatar() {
+  // Strategi 1: Cari di tag IMG (lh3 atau googleusercontent)
+  const allImages = Array.from(document.querySelectorAll("img"));
+  const foundImg = allImages.find(
+    (img) =>
+      img.src &&
+      (img.src.includes("googleusercontent.com/a/") ||
+        img.src.includes("lh3.googleusercontent.com")),
+  );
+
+  if (foundImg) {
+    console.log("✅ KETEMU Kandidat Foto via <img>:", foundImg.src);
+    return foundImg.src.replace(/=s\d+(-c)?/, "=s120-c");
+  }
+
+  // Strategi 2: Cari di Background Image (Header Akun)
+  const bgElements = document.querySelectorAll(
+    'a[href*="SignOutOptions"], .gb_A, .gb_i',
+  );
+  for (let el of bgElements) {
+    const bg = window.getComputedStyle(el).backgroundImage;
+    if (bg && bg.includes("googleusercontent.com")) {
+      const match = bg.match(/url\(["']?(.*?)["']?\)/);
+      if (match) {
+        console.log("✅ KETEMU Foto dari BG CSS:", match[1]);
+        return match[1].replace(/=s\d+(-c)?/, "=s120-c");
+      }
+    }
+  }
+  return null;
+}
+
 // --- FUNGSI UTAMA: SOLVE ALL ---
 async function solveAllQuestions() {
   const globalBar = document.querySelector(".ai-global-bar");
@@ -134,7 +167,7 @@ function injectAI() {
   });
 }
 
-// --- FUNGSI PROFIL & UI ---
+// --- FUNGSI PROFIL & UI GLOBAL ---
 function createGlobalBar() {
   if (document.querySelector(".ai-global-bar")) return;
   const bar = document.createElement("div");
@@ -143,6 +176,7 @@ function createGlobalBar() {
   document.body.appendChild(bar);
 }
 
+// --- LISTENER PESAN DARI POPUP ---
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "solveAll") {
     solveAllQuestions();
@@ -151,64 +185,26 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
   if (request.action === "getUserInfo") {
     let finalName = "";
-    let avatarUrl = null;
+    let avatarUrl = findGoogleAvatar(); // Panggil fungsi pembantu di atas
 
-    console.log("--- DEBUG START ---");
+    console.log("--- SCRAPING PROFILE START ---");
 
     try {
-      // 1. CARI SEMUA IMG DI HALAMAN
-      const allImages = document.querySelectorAll("img");
-      console.log(`Total gambar ditemukan di page: ${allImages.length}`);
-
-      for (let img of allImages) {
-        // Cek apakah src mengandung kata kunci profil Google
-        if (
-          img.src &&
-          (img.src.includes("googleusercontent.com") ||
-            img.src.includes("lh3.googleusercontent.com"))
-        ) {
-          console.log("✅ KETEMU Kandidat Foto:", img.src);
-          avatarUrl = img.src.replace(/=s\d+(-c)?/, "=s120-c");
-          break;
-        }
-      }
-
-      // 2. JIKA MASIH KOSONG, CEK BACKGROUND-IMAGE
-      if (!avatarUrl) {
-        console.log(
-          "⚠️ Foto tidak ketemu di tag <img>, mencari di background-image...",
-        );
-        const bgElements = document.querySelectorAll(
-          'a[href*="SignOutOptions"], .gb_A, .gb_i',
-        );
-        bgElements.forEach((el, i) => {
-          const bg = window.getComputedStyle(el).backgroundImage;
-          console.log(`Elemen profil ${i} BG:`, bg);
-          if (bg && bg.includes("googleusercontent.com")) {
-            const match = bg.match(/url\(["']?(.*?)["']?\)/);
-            if (match) {
-              avatarUrl = match[1].replace(/=s\d+(-c)?/, "=s120-c");
-              console.log("✅ KETEMU Foto dari BG CSS:", avatarUrl);
-            }
-          }
-        });
-      }
-
-      // 3. CARI NAMA (Logika yang sudah jalan)
+      // Cari Nama dari Aria-Label Akun
       const accountBtn = document.querySelector(
         'a[href*="SignOutOptions"], [aria-label*="Google"], [aria-label*="Akun"]',
       );
       if (accountBtn) {
         const label = accountBtn.getAttribute("aria-label");
-        console.log("Aria-label akun:", label);
+        console.log("Aria-label akun ditemukan:", label);
         const match = label.match(
           /(?:Account|Google|Akun)[^:]*:\s*(.*?)\s*\(/i,
         );
         if (match) finalName = match[1].trim();
       }
 
+      // Fallback Nama dari Email jika Aria-Label gagal
       if (!finalName) {
-        console.log("⚠️ Nama tidak ketemu di header, cari di text @...");
         const emailEl = Array.from(document.querySelectorAll("span, div")).find(
           (el) => el.innerText.includes("@") && !el.innerText.includes(" "),
         );
@@ -218,15 +214,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       console.error("❌ ERROR SCRAPING:", error);
     }
 
-    console.log("--- DEBUG END: Hasil Akhir ---", {
-      name: finalName,
-      avatar: avatarUrl,
-    });
-
+    console.log("--- DEBUG RESULT ---", { name: finalName, avatar: avatarUrl });
     sendResponse({ name: finalName || "Student", avatar: avatarUrl });
   }
   return true;
 });
+
 function normalizeText(str) {
   return str ? str.toLowerCase().replace(/[^a-z0-9]/g, "") : "";
 }
@@ -238,5 +231,6 @@ function simulateClick(el) {
   el.dispatchEvent(new MouseEvent("click", opts));
 }
 
+// Jalankan Injeksi
 setInterval(injectAI, 1500);
 createGlobalBar();
