@@ -10,17 +10,11 @@ app.use(express.json());
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 app.post("/api/solve", async (req, res) => {
-  try {
-    const { question, options } = req.body;
-    // Gunakan gemma-2-2b-it jika 3-1b masih error 400,
-    // tapi coba tetap gemma-3-1b-it dulu.
-    // const model = genAI.getGenerativeModel({ model: "gemma-3-1b-it" });
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-    const isMultipleChoice = options && options.length > 0;
+  const { question, options } = req.body;
+  const isMultipleChoice = options && options.length > 0;
 
-    // Prompt dibuat SEPEDAS mungkin agar dia tidak bertele-tele
-    // --- MASTER PROMPT UNIVERSAL (ENGLISH) ---
-    const prompt = `
+  // --- MASTER PROMPT UNIVERSAL (ENGLISH) ---
+  const prompt = `
 Role: Highly accurate Academic Expert & Professional Test-Solver.
 Task: Analyze the question and options below, then select the single most correct answer.
 
@@ -28,7 +22,7 @@ Question: ${question}
 ${isMultipleChoice ? `Options: ${options.join(" | ")}` : ""}
 
 Rules:
-1. FACT-CHECK: Use your internal database for subjects like History, Science, Math, etc. (e.g., accurately distinguish dates for Indonesian History).
+1. FACT-CHECK: Use your internal database for subjects like History, Science, Math, etc.
 2. FORMAT: Output ONLY the exact text of the correct answer.
 3. NO PROSE: Do not use phrases like "The answer is" or provide any explanation.
 4. ADAPTATION: If the question is in Indonesian, choose the Indonesian option.
@@ -36,29 +30,49 @@ Rules:
 
 Final Answer:`;
 
-    const result = await model.generateContent({
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: {
-        maxOutputTokens: 30, // Sangat hemat token
-        temperature: 0.1,
-      },
-    });
+  // Fungsi internal untuk eksekusi AI dengan fitur Retry
+  const generateAnswer = async (retries = 3) => {
+    try {
+      // Pastikan nama model benar (Gemini 1.5 Flash adalah versi stabil yang ada sekarang)
+      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-    const aiResponse = result.response.text().trim();
-    console.log("Gemma Response:", aiResponse);
+      const result = await model.generateContent({
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: {
+          maxOutputTokens: 30, // Tetap 30 agar jawaban tidak terpotong
+          temperature: 0.1,
+        },
+      });
 
-    // Kirim balik sebagai objek JSON ke extension agar tidak error parsing
+      return result.response.text().trim();
+    } catch (error) {
+      // Jika kena limit (Rate Limit 429) dan masih ada jatah retry
+      if (error.message.includes("429") && retries > 0) {
+        console.warn(
+          `⚠️ Limit tercapai. Mencoba lagi dalam 5 detik... (Sisa retry: ${retries})`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, 5000)); // Nunggu 5 detik
+        return generateAnswer(retries - 1);
+      }
+      throw error; // Lempar error jika bukan 429 atau retry habis
+    }
+  };
+
+  try {
+    const aiResponse = await generateAnswer();
+    console.log("AI Response:", aiResponse);
+
     res.json({
       answer: aiResponse,
       reason: "Success",
       type: isMultipleChoice ? "multiple" : "essay",
     });
   } catch (error) {
-    console.error("Gemma Error:", error.message);
-    // Jika gemma-3-1b-it error 400, coba ganti ke gemini-1.5-flash-8b (sangat murah & hemat)
-    res
-      .status(500)
-      .json({ answer: "Gagal memproses soal", reason: error.message });
+    console.error("Final Error:", error.message);
+    res.status(500).json({
+      answer: "Gagal memproses soal",
+      reason: "Server limit atau API error. Coba lagi beberapa saat lagi.",
+    });
   }
 });
 
