@@ -14,14 +14,27 @@ app.post("/api/solve", async (req, res) => {
     const { question, options } = req.body;
     // Gunakan gemma-2-2b-it jika 3-1b masih error 400,
     // tapi coba tetap gemma-3-1b-it dulu.
-    const model = genAI.getGenerativeModel({ model: "gemma-3-1b-it" });
+    // const model = genAI.getGenerativeModel({ model: "gemma-3-1b-it" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
     const isMultipleChoice = options && options.length > 0;
 
     // Prompt dibuat SEPEDAS mungkin agar dia tidak bertele-tele
-    const prompt = `Answer this question briefly.
+    // --- MASTER PROMPT UNIVERSAL (ENGLISH) ---
+    const prompt = `
+Role: Highly accurate Academic Expert & Professional Test-Solver.
+Task: Analyze the question and options below, then select the single most correct answer.
+
 Question: ${question}
 ${isMultipleChoice ? `Options: ${options.join(" | ")}` : ""}
-Output format: Just the answer text. No JSON, no explanation.`;
+
+Rules:
+1. FACT-CHECK: Use your internal database for subjects like History, Science, Math, etc. (e.g., accurately distinguish dates for Indonesian History).
+2. FORMAT: Output ONLY the exact text of the correct answer.
+3. NO PROSE: Do not use phrases like "The answer is" or provide any explanation.
+4. ADAPTATION: If the question is in Indonesian, choose the Indonesian option.
+5. REASONING: Think step-by-step internally, but only output the final text.
+
+Final Answer:`;
 
     const result = await model.generateContent({
       contents: [{ role: "user", parts: [{ text: prompt }] }],
