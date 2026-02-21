@@ -64,21 +64,49 @@ async function solveAllQuestions() {
   globalBar.style.display = "flex";
   document.body.style.marginTop = "50px";
 
+  let errorCount = 0;
+
   for (let i = 0; i < allButtons.length; i++) {
     const btn = allButtons[i];
-    if (btn.innerText.includes("✅")) continue;
+
+    // Lewati jika sudah terjawab atau sedang proses
+    if (btn.innerText.includes("✅") || btn.disabled) continue;
 
     infoText.innerText = `Solving: ${i + 1} / ${allButtons.length} Questions... ⏳`;
+
+    // Scroll halus ke pertanyaan agar terlihat natural
     btn.scrollIntoView({ behavior: "smooth", block: "center" });
+
+    // Klik tombol solve per soal
     btn.click();
-    await new Promise((resolve) => setTimeout(resolve, 2100));
+
+    // Tunggu proses AI selesai + Jeda nafas untuk API gratisan (4 detik)
+    // Ini penting supaya tidak kena Error 429 (Too Many Requests)
+    await new Promise((resolve) => setTimeout(resolve, 4000));
+
+    // Cek apakah tombol berubah jadi error setelah diklik
+    if (btn.innerText.includes("❌")) {
+      errorCount++;
+    } else {
+      errorCount = 0; // Reset jika berhasil
+    }
+
+    // Jika error 3x berturut-turut, hentikan proses (mungkin API limit habis)
+    if (errorCount >= 3) {
+      infoText.innerText = "Stopped: Too many errors/API Limit ⚠️";
+      break;
+    }
   }
 
-  infoText.innerText = "All Problems Solved! ✨";
+  if (errorCount < 3) {
+    infoText.innerText = "All Problems Solved! ✨";
+  }
+
+  // Sembunyikan bar info setelah selesai
   setTimeout(() => {
     globalBar.style.display = "none";
     document.body.style.marginTop = "0px";
-  }, 3000);
+  }, 4000);
 }
 
 // --- FUNGSI INJEKSI TOMBOL PER SOAL ---
