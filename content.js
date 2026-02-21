@@ -26,30 +26,28 @@ document.head.appendChild(style);
 
 // --- FUNGSI PEMBANTU: CARI AVATAR GOOGLE ---
 function findGoogleAvatar() {
-  // Strategi 1: Cari di tombol akun Chrome yang dirender di halaman
-  const selectors = [
-    "img.gb_A",
-    "img.gb_i",
-    'a[href*="SignOutOptions"] img',
-    'button[aria-label*="Google Account"] img',
-    'img[src*="googleusercontent.com/a/"]',
-  ];
-
-  for (let s of selectors) {
-    const el = document.querySelector(s);
-    if (el && el.src && !el.src.includes("data:image")) {
-      console.log("✅ Foto Profil Ditemukan via:", s);
-      return el.src.replace(/=s\d+(-c)?/, "=s120-c");
+  // Mencari link gambar yang mengandung pola unik foto profil Google
+  const imgElements = document.querySelectorAll("img");
+  for (let img of imgElements) {
+    if (
+      img.src &&
+      (img.src.includes("googleusercontent.com/a/") ||
+        img.src.includes("lh3.googleusercontent.com"))
+    ) {
+      // Mengubah ukuran gambar ke 120px agar jernih
+      return img.src.replace(/=s\d+(-c)?/, "=s120-c");
     }
   }
 
-  // Strategi 2: Cari di semua gambar dan filter berdasarkan keyword 'lh3' (link foto Google)
-  const allImgs = Array.from(document.querySelectorAll("img"));
-  const lh3Img = allImgs.find(
-    (img) => img.src && img.src.includes("lh3.googleusercontent.com"),
-  );
-  if (lh3Img) return lh3Img.src.replace(/=s\d+(-c)?/, "=s120-c");
-
+  // Jika tidak ada di img, cari di tombol-tombol yang pakai background-image
+  const allElements = document.querySelectorAll("div, button, a");
+  for (let el of allElements) {
+    const bg = window.getComputedStyle(el).backgroundImage;
+    if (bg && bg.includes("googleusercontent.com")) {
+      const match = bg.match(/url\(["']?(.*?)["']?\)/);
+      if (match) return match[1].replace(/=s\d+(-c)?/, "=s120-c");
+    }
+  }
   return null;
 }
 
