@@ -153,69 +153,79 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     let finalName = "";
     let avatarUrl = null;
 
+    console.log("--- DEBUG START ---");
+
     try {
-      console.log("🔍 Mencari profil di halaman...");
-
-      // 1. CARI GAMBAR PROFIL DULU (Paling akurat)
-      // Semua foto profil Google pasti ada link 'googleusercontent.com/a/'
+      // 1. CARI SEMUA IMG DI HALAMAN
       const allImages = document.querySelectorAll("img");
-      for (let img of allImages) {
-        if (img.src && img.src.includes("googleusercontent.com/a/")) {
-          // Ketemu! Ubah ke resolusi tinggi
-          avatarUrl = img.src.replace(/=s\d+-c/, "=s120-c");
-          console.log("✅ Foto profil ketemu:", avatarUrl);
+      console.log(`Total gambar ditemukan di page: ${allImages.length}`);
 
-          // Cari nama dari elemen bungkusannya (biasanya di aria-label)
-          let parent = img.closest("[aria-label]");
-          if (parent) {
-            let label = parent.getAttribute("aria-label");
-            // Cari teks antara kata Account/Google dan tanda kurung (
-            let match = label.match(
-              /(?:Account|Google|Akun)[^:]*:\s*(.*?)\s*\(/i,
-            );
-            if (match && match[1]) {
-              finalName = match[1].trim();
-              console.log("✅ Nama dari aria-label ketemu:", finalName);
+      for (let img of allImages) {
+        // Cek apakah src mengandung kata kunci profil Google
+        if (
+          img.src &&
+          (img.src.includes("googleusercontent.com") ||
+            img.src.includes("lh3.googleusercontent.com"))
+        ) {
+          console.log("✅ KETEMU Kandidat Foto:", img.src);
+          avatarUrl = img.src.replace(/=s\d+(-c)?/, "=s120-c");
+          break;
+        }
+      }
+
+      // 2. JIKA MASIH KOSONG, CEK BACKGROUND-IMAGE
+      if (!avatarUrl) {
+        console.log(
+          "⚠️ Foto tidak ketemu di tag <img>, mencari di background-image...",
+        );
+        const bgElements = document.querySelectorAll(
+          'a[href*="SignOutOptions"], .gb_A, .gb_i',
+        );
+        bgElements.forEach((el, i) => {
+          const bg = window.getComputedStyle(el).backgroundImage;
+          console.log(`Elemen profil ${i} BG:`, bg);
+          if (bg && bg.includes("googleusercontent.com")) {
+            const match = bg.match(/url\(["']?(.*?)["']?\)/);
+            if (match) {
+              avatarUrl = match[1].replace(/=s\d+(-c)?/, "=s120-c");
+              console.log("✅ KETEMU Foto dari BG CSS:", avatarUrl);
             }
           }
-          break; // Stop pencarian gambar kalau sudah ketemu
-        }
+        });
       }
 
-      // 2. JIKA NAMA MASIH KOSONG, CARI EMAIL DI FORM
-      if (!finalName) {
-        console.log(
-          "⚠️ Cari nama dari label aria gagal, mencoba cari email form...",
+      // 3. CARI NAMA (Logika yang sudah jalan)
+      const accountBtn = document.querySelector(
+        'a[href*="SignOutOptions"], [aria-label*="Google"], [aria-label*="Akun"]',
+      );
+      if (accountBtn) {
+        const label = accountBtn.getAttribute("aria-label");
+        console.log("Aria-label akun:", label);
+        const match = label.match(
+          /(?:Account|Google|Akun)[^:]*:\s*(.*?)\s*\(/i,
         );
-        // Mencari teks yang mengandung '@' di dalam halaman
-        const allSpans = document.querySelectorAll("span, div");
-        for (let el of allSpans) {
-          if (
-            el.innerText &&
-            el.innerText.includes("@") &&
-            !el.innerText.includes(" ")
-          ) {
-            finalName = el.innerText.split("@")[0]; // Ambil kata sebelum @
-            console.log("✅ Nama dari email form ketemu:", finalName);
-            break;
-          }
-        }
+        if (match) finalName = match[1].trim();
+      }
+
+      if (!finalName) {
+        console.log("⚠️ Nama tidak ketemu di header, cari di text @...");
+        const emailEl = Array.from(document.querySelectorAll("span, div")).find(
+          (el) => el.innerText.includes("@") && !el.innerText.includes(" "),
+        );
+        if (emailEl) finalName = emailEl.innerText.split("@")[0];
       }
     } catch (error) {
-      console.error("❌ Error saat scraping profil:", error);
+      console.error("❌ ERROR SCRAPING:", error);
     }
 
-    // Kirim hasilnya ke popup
-    console.log("📤 Mengirim data ke popup:", {
+    console.log("--- DEBUG END: Hasil Akhir ---", {
       name: finalName,
       avatar: avatarUrl,
     });
-    sendResponse({
-      name: finalName || "Student",
-      avatar: avatarUrl,
-    });
+
+    sendResponse({ name: finalName || "Student", avatar: avatarUrl });
   }
-  return true; // PENTING! Agar koneksi tetap terbuka
+  return true;
 });
 function normalizeText(str) {
   return str ? str.toLowerCase().replace(/[^a-z0-9]/g, "") : "";

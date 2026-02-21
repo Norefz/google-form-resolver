@@ -16,32 +16,36 @@ document.addEventListener("DOMContentLoaded", function () {
       tabs[0].id,
       { action: "getUserInfo" },
       function (res) {
-        if (chrome.runtime.lastError) {
-          console.error(
-            "❌ Gagal terhubung ke content.js:",
-            chrome.runtime.lastError.message,
-          );
-          nameEl.innerText = "Reload Halaman!"; // Pesan error UI
+        if (chrome.runtime.lastError || !res) {
+          nameEl.innerText = "Reload Halaman!";
           return;
         }
 
-        if (!res) {
-          console.warn("⚠️ Data kosong dari content.js");
-          return;
-        }
-
-        console.log("✅ Data diterima di popup:", res);
-
-        // Render Nama
+        // Update Nama
         nameEl.innerText = res.name;
 
-        // Render Foto atau Inisial
-        if (res.avatar) {
-          avatarEl.innerHTML = `<img src="${res.avatar}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">`;
+        // Update Foto atau Inisial
+        if (res.avatar && res.avatar !== null) {
+          // Jika foto ditemukan
+          avatarEl.innerHTML = `<img src="${res.avatar}" style="width:100%; height:100%; border-radius:50%; object-fit:cover; display:block;">`;
           avatarEl.style.background = "transparent";
+          avatarEl.innerText = ""; // Hapus tanda tanya/huruf
         } else {
-          avatarEl.innerText = res.name.charAt(0).toUpperCase();
-          avatarEl.style.background = "#e91e63"; // Warna pink default
+          // Jika foto TIDAK ditemukan, tampilkan inisial (E untuk Erlangga, dll)
+          const initial = res.name ? res.name.charAt(0).toUpperCase() : "?";
+          avatarEl.innerText = initial;
+
+          // Pilih warna berdasarkan inisial supaya mirip Chrome
+          const colors = [
+            "#1a73e8",
+            "#d93025",
+            "#f9ab00",
+            "#188038",
+            "#e91e63",
+          ];
+          const colorIndex = initial.charCodeAt(0) % colors.length;
+          avatarEl.style.background = colors[colorIndex];
+          avatarEl.innerHTML = initial; // Pastikan teks muncul
         }
       },
     );
