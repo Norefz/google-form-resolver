@@ -30,24 +30,32 @@
         font-weight: bold;
         margin: 0 auto 12px;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        overflow: hidden; /* Tambahan: Biar foto gak keluar jalur */
+      }
+      /* Tambahan: CSS khusus untuk foto profil Chrome */
+      .avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 50%;
       }
       .user-name {
         font-size: 18px;
         font-weight: 600;
         color: #202124;
         margin: 0;
+        /* Biar teks gak kepanjangan */
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
       .user-role {
-        font-size: 12px;
-        color: #70757a;
+        font-size: 10px;
+        color: #1a73e8;
         margin-top: 4px;
         text-transform: uppercase;
         letter-spacing: 1px;
-      }
-      .divider {
-        height: 1px;
-        background: #eee;
-        margin: 15px 0;
+        font-weight: bold;
       }
       .solve-btn {
         width: 100%;
@@ -69,15 +77,12 @@
         background-color: #1765cc;
         transform: translateY(-1px);
       }
-      .solve-btn:active {
-        transform: translateY(0);
-      }
       .solve-btn:disabled {
         background-color: #bdc1c6;
         cursor: not-allowed;
       }
       .footer-text {
-        font-size: 10px;
+        font-size: 9px;
         color: #9aa0a6;
         margin-top: 15px;
       }
@@ -86,7 +91,7 @@
   <body>
     <div class="profile-card">
       <div class="avatar" id="avatarLetter">?</div>
-      <h3 class="user-name" id="userName">Loading...</h3>
+      <h3 class="user-name" id="userName">Syncing...</h3>
       <div class="user-role">Premium Student</div>
     </div>
 
@@ -94,7 +99,7 @@
       <span>Solve All Problems</span> ✨
     </button>
 
-    <div class="footer-text">Powered by Gemini AI Engine</div>
+    <div class="footer-text">Gemma 3 1B Engine • Connected</div>
 
     <script src="popup.js"></script>
   </body>

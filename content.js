@@ -143,7 +143,6 @@ function createGlobalBar() {
   document.body.appendChild(bar);
 }
 
-// SATU LISTENER UNTUK SEMUA (MENGHINDARI BUG)
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "solveAll") {
     solveAllQuestions();
@@ -151,38 +150,72 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   if (request.action === "getUserInfo") {
-    // Cari Nama: Prioritas email, lalu aria-label header
-    const emailEl = document.querySelector(".Dq93zc");
-    const accountBtn = document.querySelector('a[href*="SignOutOptions"]');
-    let name = "Student";
-
-    if (emailEl && emailEl.innerText.includes("@")) {
-      name = emailEl.innerText.split("@")[0];
-    } else if (accountBtn && accountBtn.ariaLabel) {
-      name =
-        accountBtn.ariaLabel.split(":")[1]?.split("(")[0]?.trim() || "Student";
-    }
-
-    // Cari Foto: Cek semua kemungkinan selector Google
-    const imgSelectors = [
-      'img[src*="googleusercontent.com/a/"]',
-      ".gb_A img",
-      ".gb_i",
-      'img[aria-hidden="true"]',
-    ];
-
+    let finalName = "";
     let avatarUrl = null;
-    for (let s of imgSelectors) {
-      const img = document.querySelector(s);
-      if (img && img.src && img.src.startsWith("http")) {
-        avatarUrl = img.src;
-        break;
+
+    try {
+      console.log("🔍 Mencari profil di halaman...");
+
+      // 1. CARI GAMBAR PROFIL DULU (Paling akurat)
+      // Semua foto profil Google pasti ada link 'googleusercontent.com/a/'
+      const allImages = document.querySelectorAll("img");
+      for (let img of allImages) {
+        if (img.src && img.src.includes("googleusercontent.com/a/")) {
+          // Ketemu! Ubah ke resolusi tinggi
+          avatarUrl = img.src.replace(/=s\d+-c/, "=s120-c");
+          console.log("✅ Foto profil ketemu:", avatarUrl);
+
+          // Cari nama dari elemen bungkusannya (biasanya di aria-label)
+          let parent = img.closest("[aria-label]");
+          if (parent) {
+            let label = parent.getAttribute("aria-label");
+            // Cari teks antara kata Account/Google dan tanda kurung (
+            let match = label.match(
+              /(?:Account|Google|Akun)[^:]*:\s*(.*?)\s*\(/i,
+            );
+            if (match && match[1]) {
+              finalName = match[1].trim();
+              console.log("✅ Nama dari aria-label ketemu:", finalName);
+            }
+          }
+          break; // Stop pencarian gambar kalau sudah ketemu
+        }
       }
+
+      // 2. JIKA NAMA MASIH KOSONG, CARI EMAIL DI FORM
+      if (!finalName) {
+        console.log(
+          "⚠️ Cari nama dari label aria gagal, mencoba cari email form...",
+        );
+        // Mencari teks yang mengandung '@' di dalam halaman
+        const allSpans = document.querySelectorAll("span, div");
+        for (let el of allSpans) {
+          if (
+            el.innerText &&
+            el.innerText.includes("@") &&
+            !el.innerText.includes(" ")
+          ) {
+            finalName = el.innerText.split("@")[0]; // Ambil kata sebelum @
+            console.log("✅ Nama dari email form ketemu:", finalName);
+            break;
+          }
+        }
+      }
+    } catch (error) {
+      console.error("❌ Error saat scraping profil:", error);
     }
 
-    sendResponse({ name: name, avatar: avatarUrl });
+    // Kirim hasilnya ke popup
+    console.log("📤 Mengirim data ke popup:", {
+      name: finalName,
+      avatar: avatarUrl,
+    });
+    sendResponse({
+      name: finalName || "Student",
+      avatar: avatarUrl,
+    });
   }
-  return true; // PENTING: Agar koneksi tidak tertutup sebelum membalas
+  return true; // PENTING! Agar koneksi tetap terbuka
 });
 function normalizeText(str) {
   return str ? str.toLowerCase().replace(/[^a-z0-9]/g, "") : "";
