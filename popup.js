@@ -1,49 +1,42 @@
 document.addEventListener("DOMContentLoaded", function () {
   const nameEl = document.getElementById("userName");
   const avatarEl = document.getElementById("avatarLetter");
-  const solveBtn = document.getElementById("solveAllBtn");
 
-  function updateProfile() {
-    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-      if (!tabs[0]) return;
+  chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+    if (!tabs[0] || !tabs[0].url.includes("docs.google.com")) {
+      nameEl.innerText = "Buka Google Form";
+      return;
+    }
 
-      chrome.tabs.sendMessage(
-        tabs[0].id,
-        { action: "getUserInfo" },
-        function (response) {
-          if (chrome.runtime.lastError) return; // Menghindari error jika tab belum siap
+    chrome.tabs.sendMessage(
+      tabs[0].id,
+      { action: "getUserInfo" },
+      function (response) {
+        if (chrome.runtime.lastError || !response) {
+          nameEl.innerText = "Premium Student"; // Fallback jika gagal
+          return;
+        }
 
-          if (response) {
-            // Format Nama: Huruf depan besar
-            const rawName = response.name.replace(/[0-9.]/g, " ").trim();
-            const cleanName =
-              rawName.charAt(0).toUpperCase() + rawName.slice(1);
-            nameEl.innerText = cleanName;
+        // Update Nama
+        const cleanName = response.name.replace(/[0-9.]/g, "").trim();
+        nameEl.innerText = cleanName || "Student";
 
-            // Update Foto Profil
-            if (response.avatar) {
-              avatarEl.innerHTML = `<img src="${response.avatar}" style="width:100%; height:100%; border-radius:50%; object-fit:cover; border: 2px solid #fff;">`;
-              avatarEl.style.background = "transparent";
-              avatarEl.innerText = ""; // Hapus inisial
-            } else {
-              avatarEl.innerText = cleanName.charAt(0).toUpperCase();
-            }
-          }
-        },
-      );
-    });
-  }
+        // Update Foto
+        if (response.avatar) {
+          avatarEl.innerHTML = `<img src="${response.avatar}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">`;
+          avatarEl.style.background = "transparent";
+        } else {
+          avatarEl.innerText = (cleanName || "S").charAt(0).toUpperCase();
+        }
+      },
+    );
+  });
 
-  // Jalankan update profil
-  updateProfile();
-
-  // Tombol Solve All
-  solveBtn.addEventListener("click", function () {
+  document.getElementById("solveAllBtn").onclick = function () {
     this.disabled = true;
-    this.innerText = "Running... 🚀";
+    this.innerText = "Solving... 🚀";
     chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
       chrome.tabs.sendMessage(tabs[0].id, { action: "solveAll" });
-      setTimeout(() => window.close(), 1000);
     });
-  });
+  };
 });

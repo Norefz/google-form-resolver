@@ -151,32 +151,30 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   if (request.action === "getUserInfo") {
-    // 1. CARI NAMA (Cari di elemen header atau aria-label akun)
-    let name = "Student";
+    // Cari Nama: Prioritas email, lalu aria-label header
     const emailEl = document.querySelector(".Dq93zc");
-    const accountCircle = document.querySelector('a[href*="SignOutOptions"]');
+    const accountBtn = document.querySelector('a[href*="SignOutOptions"]');
+    let name = "Student";
 
-    if (emailEl) {
+    if (emailEl && emailEl.innerText.includes("@")) {
       name = emailEl.innerText.split("@")[0];
-    } else if (accountCircle && accountCircle.getAttribute("aria-label")) {
-      // Mengambil nama dari aria-label "Google Account: Nama User (email@gmail.com)"
-      const label = accountCircle.getAttribute("aria-label");
-      name = label.split(":")[1]?.split("(")[0]?.trim() || "Student";
+    } else if (accountBtn && accountBtn.ariaLabel) {
+      name =
+        accountBtn.ariaLabel.split(":")[1]?.split("(")[0]?.trim() || "Student";
     }
 
-    // 2. CARI FOTO (Gunakan selector yang lebih luas & paksa ambil src)
-    const avatarSelectors = [
+    // Cari Foto: Cek semua kemungkinan selector Google
+    const imgSelectors = [
       'img[src*="googleusercontent.com/a/"]',
-      ".gb_A.gb_Ba img",
-      "img.gb_i",
-      ".gb_d img",
-      ".ahSpx img",
+      ".gb_A img",
+      ".gb_i",
+      'img[aria-hidden="true"]',
     ];
 
     let avatarUrl = null;
-    for (let selector of avatarSelectors) {
-      const img = document.querySelector(selector);
-      if (img && img.src && img.src.includes("http")) {
+    for (let s of imgSelectors) {
+      const img = document.querySelector(s);
+      if (img && img.src && img.src.startsWith("http")) {
         avatarUrl = img.src;
         break;
       }
@@ -184,7 +182,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     sendResponse({ name: name, avatar: avatarUrl });
   }
-  return true;
+  return true; // PENTING: Agar koneksi tidak tertutup sebelum membalas
 });
 function normalizeText(str) {
   return str ? str.toLowerCase().replace(/[^a-z0-9]/g, "") : "";
