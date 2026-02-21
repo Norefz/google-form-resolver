@@ -4,9 +4,9 @@
   "version": "1.0",
   "description": "Asisten AI untuk membantu menjawab Google Forms",
   "host_permissions": [
-    "http://localhost:3000/*",
     "https://*.googleusercontent.com/*",
-    "https://docs.google.com/*"
+    "https://lh3.googleusercontent.com/*",
+    "https://*.google.com/*"
   ],
   "permissions": ["activeTab", "scripting", "tabs"],
   "action": {

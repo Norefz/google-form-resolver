@@ -26,34 +26,30 @@ document.head.appendChild(style);
 
 // --- FUNGSI PEMBANTU: CARI AVATAR GOOGLE ---
 function findGoogleAvatar() {
-  // Strategi 1: Cari di tag IMG (lh3 atau googleusercontent)
-  const allImages = Array.from(document.querySelectorAll("img"));
-  const foundImg = allImages.find(
-    (img) =>
-      img.src &&
-      (img.src.includes("googleusercontent.com/a/") ||
-        img.src.includes("lh3.googleusercontent.com")),
-  );
+  // Strategi 1: Cari di tombol akun Chrome yang dirender di halaman
+  const selectors = [
+    "img.gb_A",
+    "img.gb_i",
+    'a[href*="SignOutOptions"] img',
+    'button[aria-label*="Google Account"] img',
+    'img[src*="googleusercontent.com/a/"]',
+  ];
 
-  if (foundImg) {
-    console.log("✅ KETEMU Kandidat Foto via <img>:", foundImg.src);
-    return foundImg.src.replace(/=s\d+(-c)?/, "=s120-c");
-  }
-
-  // Strategi 2: Cari di Background Image (Header Akun)
-  const bgElements = document.querySelectorAll(
-    'a[href*="SignOutOptions"], .gb_A, .gb_i',
-  );
-  for (let el of bgElements) {
-    const bg = window.getComputedStyle(el).backgroundImage;
-    if (bg && bg.includes("googleusercontent.com")) {
-      const match = bg.match(/url\(["']?(.*?)["']?\)/);
-      if (match) {
-        console.log("✅ KETEMU Foto dari BG CSS:", match[1]);
-        return match[1].replace(/=s\d+(-c)?/, "=s120-c");
-      }
+  for (let s of selectors) {
+    const el = document.querySelector(s);
+    if (el && el.src && !el.src.includes("data:image")) {
+      console.log("✅ Foto Profil Ditemukan via:", s);
+      return el.src.replace(/=s\d+(-c)?/, "=s120-c");
     }
   }
+
+  // Strategi 2: Cari di semua gambar dan filter berdasarkan keyword 'lh3' (link foto Google)
+  const allImgs = Array.from(document.querySelectorAll("img"));
+  const lh3Img = allImgs.find(
+    (img) => img.src && img.src.includes("lh3.googleusercontent.com"),
+  );
+  if (lh3Img) return lh3Img.src.replace(/=s\d+(-c)?/, "=s120-c");
+
   return null;
 }
 
