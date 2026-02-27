@@ -39,7 +39,7 @@ Final Answer:`;
       const result = await model.generateContent({
         contents: [{ role: "user", parts: [{ text: prompt }] }],
         generationConfig: {
-          maxOutputTokens: 30, // Tetap 30 agar jawaban tidak terpotong
+          maxOutputTokens: isMultipleChoice ? 20 : 300,
           temperature: 0.1,
         },
       });
