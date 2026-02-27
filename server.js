@@ -15,18 +15,24 @@ app.post("/api/solve", async (req, res) => {
 
   // --- MASTER PROMPT UNIVERSAL (ENGLISH) ---
   const prompt = `
-Role: Highly accurate Academic Expert & Professional Test-Solver.
-Task: Analyze the question and options below, then select the single most correct answer.
+Role: Highly accurate Academic Expert and Professional Test-Solver.
+Task: Analyze the provided question and deliver the most accurate response.
 
 Question: ${question}
-${isMultipleChoice ? `Options: ${options.join(" | ")}` : ""}
+${isMultipleChoice ? `Options: ${options.join(" | ")}` : "Task: Provide a comprehensive and detailed essay response."}
 
 Rules:
-1. FACT-CHECK: Use your internal database for subjects like History, Science, Math, etc.
-2. FORMAT: Output ONLY the exact text of the correct answer.
-3. NO PROSE: Do not use phrases like "The answer is" or provide any explanation.
-4. ADAPTATION: If the question is in Indonesian, choose the Indonesian option.
-5. REASONING: Think step-by-step internally, but only output the final text.
+1. FOR MULTIPLE CHOICE: 
+   - Output ONLY the exact text of the correct option. 
+   - Strictly NO additional words, prose, or explanations.
+   
+2. FOR ESSAY/URAIAN: 
+   - Provide a deep, thorough, and informative explanation. 
+   - Ensure the answer is academic and comprehensive.
+   - Use the same language as the question (if Indonesian, respond in Indonesian).
+   
+3. NO INTRODUCTIONS: Do not use phrases like "The answer is..." or "Based on my analysis...". Start immediately with the core answer.
+4. FACT-CHECK: Ensure accuracy based on official academic standards.
 
 Final Answer:`;
 
