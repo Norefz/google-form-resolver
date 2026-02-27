@@ -1,16 +1,17 @@
 const API_URL = "http://localhost:3000/api/solve";
 
-// --- KONFIGURASI SELECTOR ---
+// --- 1. KONFIGURASI SELECTOR ---
+// Selector dipertajam agar lebih akurat mencari kotak essay
 const SELECTORS = {
   questionBlock: ".geS5n",
   questionText: '.M7eMe, [role="heading"]',
   optionLabel: ".docssharedWizToggleLabeledLabelText, .aDTYp, .OvPDhc",
   optionClickable:
     '[role="radio"], [role="checkbox"], .docssharedWizToggleLabeledContainer, .uMCH9b, .vd33rc',
-  textInput: 'input:not([type="hidden"]), textarea.KHxj8b, textarea.tL9Q4c',
+  textInput: 'textarea, input[type="text"], [role="textbox"]', // Selector lebih luas
 };
 
-// --- CSS STYLES ---
+// --- 2. CSS STYLES ---
 const style = document.createElement("style");
 style.innerHTML = `
   .ai-global-bar {
@@ -21,95 +22,77 @@ style.innerHTML = `
     font-family: 'Google Sans', Roboto, Arial, sans-serif;
   }
   .ai-global-info { font-weight: bold; display: flex; align-items: center; gap: 10px; }
+  .ai-solve-container { margin-top: 10px; padding: 10px; border-top: 1px dashed #ccc; clear: both; }
+  .ai-btn-solve { padding: 8px 16px; background: #1a73e8; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; }
+  .ai-status-box { display: none; margin-top: 8px; font-size: 13px; color: #444; padding: 10px; background: #f8f9fa; border-radius: 4px; border-left: 4px solid #1a73e8; }
 `;
 document.head.appendChild(style);
 
-// --- FUNGSI PEMBANTU: CARI AVATAR GOOGLE ---
-function findGoogleAvatar() {
-  // Mencari link gambar yang mengandung pola unik foto profil Google
-  const imgElements = document.querySelectorAll("img");
-  for (let img of imgElements) {
-    if (
-      img.src &&
-      (img.src.includes("googleusercontent.com/a/") ||
-        img.src.includes("lh3.googleusercontent.com"))
-    ) {
-      // Mengubah ukuran gambar ke 120px agar jernih
-      return img.src.replace(/=s\d+(-c)?/, "=s120-c");
-    }
+// --- 3. FITUR HUMAN-LIKE MIMICRY (VERSI AMPUH) ---
+
+async function typeLikeHuman(element, text) {
+  if (!element) return;
+
+  element.focus();
+  element.click(); // Pastikan benar-benar fokus
+
+  // Gunakan execCommand untuk "menyuntikkan" teks seperti diketik asli
+  // Ini trik paling jitu buat nembus Google Forms
+  try {
+    document.execCommand("insertText", false, text);
+  } catch (e) {
+    // Fallback jika execCommand gagal
+    element.value = text;
   }
 
-  // Jika tidak ada di img, cari di tombol-tombol yang pakai background-image
-  const allElements = document.querySelectorAll("div, button, a");
-  for (let el of allElements) {
-    const bg = window.getComputedStyle(el).backgroundImage;
-    if (bg && bg.includes("googleusercontent.com")) {
-      const match = bg.match(/url\(["']?(.*?)["']?\)/);
-      if (match) return match[1].replace(/=s\d+(-c)?/, "=s120-c");
-    }
-  }
-  return null;
+  // Trigger event agar sistem Google sadar ada input
+  element.dispatchEvent(new Event("input", { bubbles: true }));
+  element.dispatchEvent(new Event("change", { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 100));
+  element.blur();
 }
 
-// --- FUNGSI UTAMA: SOLVE ALL ---
+async function simulateHumanClick(el) {
+  if (!el) return;
+  const opts = { bubbles: true, cancelable: true, view: window };
+  el.dispatchEvent(new MouseEvent("mouseenter", opts));
+  await new Promise((r) => setTimeout(r, 150));
+  el.dispatchEvent(new MouseEvent("click", opts));
+}
+
+// --- 4. FUNGSI UTAMA: SOLVE ALL ---
 async function solveAllQuestions() {
   const globalBar = document.querySelector(".ai-global-bar");
   const infoText = document.querySelector(".ai-global-info");
-  const allButtons = Array.from(
-    document.querySelectorAll(".ai-solve-container button"),
-  );
+  const allButtons = Array.from(document.querySelectorAll(".ai-btn-solve"));
 
   if (allButtons.length === 0) return;
 
   globalBar.style.display = "flex";
   document.body.style.marginTop = "50px";
 
-  let errorCount = 0;
-
   for (let i = 0; i < allButtons.length; i++) {
     const btn = allButtons[i];
-
-    // Lewati jika sudah terjawab atau sedang proses
     if (btn.innerText.includes("✅") || btn.disabled) continue;
 
     infoText.innerText = `Solving: ${i + 1} / ${allButtons.length} Questions... ⏳`;
-
-    // Scroll halus ke pertanyaan agar terlihat natural
     btn.scrollIntoView({ behavior: "smooth", block: "center" });
 
-    // Klik tombol solve per soal
+    const randomWait = Math.floor(Math.random() * 2000) + 2000;
+    await new Promise((resolve) => setTimeout(resolve, randomWait));
+
     btn.click();
-
-    // Tunggu proses AI selesai + Jeda nafas untuk API gratisan (4 detik)
-    // Ini penting supaya tidak kena Error 429 (Too Many Requests)
     await new Promise((resolve) => setTimeout(resolve, 4000));
-
-    // Cek apakah tombol berubah jadi error setelah diklik
-    if (btn.innerText.includes("❌")) {
-      errorCount++;
-    } else {
-      errorCount = 0; // Reset jika berhasil
-    }
-
-    // Jika error 3x berturut-turut, hentikan proses (mungkin API limit habis)
-    if (errorCount >= 3) {
-      infoText.innerText = "Stopped: Too many errors/API Limit ⚠️";
-      break;
-    }
   }
 
-  if (errorCount < 3) {
-    infoText.innerText = "All Problems Solved! ✨";
-  }
-
-  // Sembunyikan bar info setelah selesai
+  infoText.innerText = "All Problems Solved! ✨";
   setTimeout(() => {
     globalBar.style.display = "none";
     document.body.style.marginTop = "0px";
-  }, 4000);
+  }, 3000);
 }
 
-// --- FUNGSI INJEKSI TOMBOL PER SOAL ---
+// --- 5. INJEKSI TOMBOL PER SOAL ---
 function injectAI() {
   const blocks = document.querySelectorAll(SELECTORS.questionBlock);
   blocks.forEach((block) => {
@@ -118,17 +101,13 @@ function injectAI() {
 
     const container = document.createElement("div");
     container.className = "ai-solve-container";
-    container.style =
-      "margin-top: 10px; padding: 10px; border-top: 1px dashed #ccc; clear: both;";
 
     const btn = document.createElement("button");
+    btn.className = "ai-btn-solve";
     btn.innerText = "Solve with AI ✨";
-    btn.style =
-      "padding: 8px 16px; background: #1a73e8; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;";
 
     const statusBox = document.createElement("div");
-    statusBox.style =
-      "display: none; margin-top: 8px; font-size: 13px; color: #444; padding: 10px; background: #f8f9fa; border-radius: 4px; border-left: 4px solid #1a73e8;";
+    statusBox.className = "ai-status-box";
 
     btn.onclick = async (e) => {
       e.preventDefault();
@@ -151,10 +130,13 @@ function injectAI() {
           body: JSON.stringify({ question, options: optionsForPrompt }),
         });
         const data = await res.json();
+
         statusBox.innerHTML = `<strong>AI:</strong> ${data.answer}`;
         statusBox.style.display = "block";
 
         let solved = false;
+
+        // Cek Pilihan Ganda
         if (labelEls.length > 0) {
           const aiClean = normalizeText(data.answer);
           const match = labelEls.find(
@@ -163,17 +145,21 @@ function injectAI() {
               aiClean.includes(normalizeText(el.innerText)),
           );
           if (match) {
-            simulateClick(match.closest(SELECTORS.optionClickable) || match);
-            solved = true;
-          }
-        } else {
-          const input = block.querySelector(SELECTORS.textInput);
-          if (input) {
-            input.value = data.answer;
-            input.dispatchEvent(new Event("input", { bubbles: true }));
+            await simulateHumanClick(
+              match.closest(SELECTORS.optionClickable) || match,
+            );
             solved = true;
           }
         }
+        // Cek Essay / Uraian
+        else {
+          const input = block.querySelector(SELECTORS.textInput);
+          if (input) {
+            await typeLikeHuman(input, data.answer);
+            solved = true;
+          }
+        }
+
         btn.innerText = solved ? "Solved! ✅" : "Manual Check ⚠️";
         btn.style.background = solved ? "#188038" : "#f9ab00";
       } catch (err) {
@@ -189,7 +175,11 @@ function injectAI() {
   });
 }
 
-// --- FUNGSI PROFIL & UI GLOBAL ---
+// --- 6. UTILS ---
+function normalizeText(str) {
+  return str ? str.toLowerCase().replace(/[^a-z0-9]/g, "") : "";
+}
+
 function createGlobalBar() {
   if (document.querySelector(".ai-global-bar")) return;
   const bar = document.createElement("div");
@@ -198,61 +188,14 @@ function createGlobalBar() {
   document.body.appendChild(bar);
 }
 
-// --- LISTENER PESAN DARI POPUP ---
+// --- 7. LISTENERS ---
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "solveAll") {
     solveAllQuestions();
     sendResponse({ status: "started" });
   }
-
-  if (request.action === "getUserInfo") {
-    let finalName = "";
-    let avatarUrl = findGoogleAvatar(); // Panggil fungsi pembantu di atas
-
-    console.log("--- SCRAPING PROFILE START ---");
-
-    try {
-      // Cari Nama dari Aria-Label Akun
-      const accountBtn = document.querySelector(
-        'a[href*="SignOutOptions"], [aria-label*="Google"], [aria-label*="Akun"]',
-      );
-      if (accountBtn) {
-        const label = accountBtn.getAttribute("aria-label");
-        console.log("Aria-label akun ditemukan:", label);
-        const match = label.match(
-          /(?:Account|Google|Akun)[^:]*:\s*(.*?)\s*\(/i,
-        );
-        if (match) finalName = match[1].trim();
-      }
-
-      // Fallback Nama dari Email jika Aria-Label gagal
-      if (!finalName) {
-        const emailEl = Array.from(document.querySelectorAll("span, div")).find(
-          (el) => el.innerText.includes("@") && !el.innerText.includes(" "),
-        );
-        if (emailEl) finalName = emailEl.innerText.split("@")[0];
-      }
-    } catch (error) {
-      console.error("❌ ERROR SCRAPING:", error);
-    }
-
-    console.log("--- DEBUG RESULT ---", { name: finalName, avatar: avatarUrl });
-    sendResponse({ name: finalName || "Student", avatar: avatarUrl });
-  }
   return true;
 });
 
-function normalizeText(str) {
-  return str ? str.toLowerCase().replace(/[^a-z0-9]/g, "") : "";
-}
-
-function simulateClick(el) {
-  const opts = { bubbles: true, cancelable: true, view: window };
-  el.dispatchEvent(new MouseEvent("mousedown", opts));
-  el.dispatchEvent(new MouseEvent("mouseup", opts));
-  el.dispatchEvent(new MouseEvent("click", opts));
-}
-
-// Jalankan Injeksi
 setInterval(injectAI, 1500);
 createGlobalBar();
