@@ -13,40 +13,41 @@ app.post("/api/solve", async (req, res) => {
   const { question, options } = req.body;
   const isMultipleChoice = options && options.length > 0;
 
-  // --- MASTER PROMPT UNIVERSAL (ENGLISH) ---
+  // --- MASTER PROMPT TEROPTIMASI ---
   const prompt = `
-Role: Highly accurate Academic Expert and Professional Test-Solver.
-Task: Analyze the provided question and deliver the most accurate response.
+Role: Expert Academic Professor.
+Task: Provide a high-quality answer to the question below.
 
 Question: ${question}
-${isMultipleChoice ? `Options: ${options.join(" | ")}` : "Task: Provide a comprehensive and detailed essay response."}
+${isMultipleChoice ? `Options: ${options.join(" | ")}` : "Task: ESSAY/URAIAN. Provide a long, detailed, and comprehensive academic explanation."}
 
-Rules:
-1. FOR MULTIPLE CHOICE: 
-   - Output ONLY the exact text of the correct option. 
-   - Strictly NO additional words, prose, or explanations.
-   
-2. FOR ESSAY/URAIAN: 
-   - Provide a deep, thorough, and informative explanation. 
-   - Ensure the answer is academic and comprehensive.
-   - Use the same language as the question (if Indonesian, respond in Indonesian).
-   
-3. NO INTRODUCTIONS: Do not use phrases like "The answer is..." or "Based on my analysis...". Start immediately with the core answer.
-4. FACT-CHECK: Ensure accuracy based on official academic standards.
+Strict Rules for Response:
+1. IF MULTIPLE CHOICE (Pilihan Ganda):
+   - Provide ONLY the exact text of the correct option.
+   - NO explanations. NO extra words.
 
-Final Answer:`;
+2.Rules for Essay:
+1. EXPLAIN the difference or the answer in a "Definition A vs Definition B" style.
+2. KEEP IT SHORT: Use maximum 2 sentences or one clear comparison.
+3. NO FILLERS: Use simple, direct Indonesian. Like: "Dasar negara adalah [A], sedangkan pandangan hidup adalah [B]."
+4. NO INTROS: Do not start with "The answer is" or "The difference is".
 
-  // Fungsi internal untuk eksekusi AI dengan fitur Retry
+3. STRUCTURE:
+   - Start immediately with the answer.
+   - NEVER use "The answer is..." or intro phrases.
+
+Final Answer:`; // Fungsi internal untuk eksekusi AI dengan fitur Retry
   const generateAnswer = async (retries = 3) => {
     try {
       // Pastikan nama model benar (Gemini 1.5 Flash adalah versi stabil yang ada sekarang)
-      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+      // const model = genAI.getGenerativeModel({ model: "gemini-3-flash" });
+      const model = genAI.getGenerativeModel({ model: "gemma-3-4b-it" });
 
       const result = await model.generateContent({
         contents: [{ role: "user", parts: [{ text: prompt }] }],
         generationConfig: {
-          maxOutputTokens: isMultipleChoice ? 20 : 300,
-          temperature: 0.1,
+          maxOutputTokens: isMultipleChoice ? 30 : 700,
+          temperature: isMultipleChoice ? 0.1 : 0.5,
         },
       });
 
