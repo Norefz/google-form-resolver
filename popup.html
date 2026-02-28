@@ -9,6 +9,7 @@
         text-align: center;
         background-color: #ffffff;
         margin: 0;
+        border-radius: 12px;
       }
       .profile-card {
         background: #f8f9fa;
@@ -57,32 +58,66 @@
       }
 
       /* --- NEW: CSS UNTUK STATS & QUOTA --- */
-      .stats-panel {
-        background: #ffffff;
-        border: 1px solid #e0e0e0;
+      .quota-box {
+        background-color: #1a73e8; /* Biru Google */
         border-radius: 12px;
-        padding: 12px;
+        padding: 15px;
+        color: white;
+        text-align: center;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 10px rgba(26, 115, 232, 0.2);
+      }
+
+      .quota-title {
+        font-size: 10px;
+        font-weight: bold;
+        letter-spacing: 1px;
+        opacity: 0.9;
+        margin-bottom: 12px;
+      }
+
+      .quota-content {
+        display: flex;
+        align-items: center;
+        justify-content: space-around;
         margin-bottom: 15px;
       }
-      .stats-row {
+
+      .quota-item {
         display: flex;
-        justify-content: space-between;
-        margin-bottom: 8px;
+        flex-direction: column;
       }
-      .stat-item {
-        text-align: left;
+
+      .quota-number {
+        font-size: 28px;
+        font-weight: 800;
       }
-      .stat-label {
-        display: block;
-        font-size: 10px;
-        color: #5f6368;
-        text-transform: uppercase;
-        font-weight: bold;
+
+      .quota-label {
+        font-size: 11px;
+        opacity: 0.8;
       }
-      .stat-value {
-        font-size: 16px;
-        font-weight: bold;
-        color: #202124;
+
+      .quota-divider {
+        width: 1px;
+        height: 40px;
+        background-color: rgba(255, 255, 255, 0.3);
+      }
+
+      .quota-progress-container {
+        width: 100%;
+        background-color: rgba(255, 255, 255, 0.2);
+        height: 6px;
+        border-radius: 10px;
+        overflow: hidden;
+      }
+
+      .quota-progress-bar {
+        width: 0%; /* Nanti diupdate lewat popup.js */
+        height: 100%;
+        background-color: rgba(255, 255, 255, 0.6);
+        border-radius: 10px;
+        transition: width 0.5s ease-out;
       }
       .progress-container {
         width: 100%;
@@ -136,24 +171,26 @@
       <div class="user-role">Premium Student</div>
     </div>
 
-    <div class="stats-panel">
-      <div class="stats-row">
-        <div class="stat-item">
-          <span class="stat-label">Solved</span>
-          <span class="stat-value" id="solvedCount">0</span>
+    <div class="quota-box">
+      <div class="quota-title">DAILY QUOTA</div>
+      <div class="quota-content">
+        <div class="quota-item">
+          <span class="quota-number" id="solvedCount">0</span>
+          <span class="quota-label">Solved</span>
         </div>
-        <div class="stat-item" style="text-align: right">
-          <span class="stat-label">Remaining</span>
-          <span class="stat-value" id="quotaLeft">50</span>
+        <div class="quota-divider"></div>
+        <div class="quota-item">
+          <span class="quota-number" id="quotaLeft">50</span>
+          <span class="quota-label">Remaining</span>
         </div>
       </div>
-      <div class="progress-container">
-        <div class="progress-bar" id="quotaProgress"></div>
+      <div class="quota-progress-container">
+        <div class="quota-progress-bar" id="quotaProgress"></div>
       </div>
     </div>
 
     <button id="solveAllBtn" class="solve-btn">
-      <span>Solve All Problems</span> ✨
+      <span>Solve All Problems</span>
     </button>
 
     <div class="footer-text">Gemma Engine • Daily Quota Managed</div>
