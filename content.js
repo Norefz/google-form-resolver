@@ -225,43 +225,42 @@ function createGlobalBar() {
   document.body.appendChild(bar);
 }
 
-// --- 8. LISTENERS (FULL VERSION: ANTI-NULL & INITIALS) ---
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "solveAll") {
     solveAllQuestions();
     sendResponse({ status: "started" });
   } else if (request.action === "getUserInfo") {
-    // 1. CARI IDENTITAS DI BERBAGAI TITIK (Agresif)
-    // Cek Header Form (ahS4be), Profil Kanan Atas (gb_A), dan teks halaman
-    const headerIdentity = document.querySelector(".ahS4be")?.innerText || "";
+    // 1. Ambil identitas dari tombol profil Google (biasanya ada email di aria-label/title)
     const profileBtn =
+      document.querySelector('a[href*="accounts.google.com"]') ||
       document.querySelector(".gb_A") ||
       document.querySelector('[aria-label*="Google Account"]');
-    const profileAttr = profileBtn
-      ? profileBtn.getAttribute("aria-label") || profileBtn.title
-      : "";
 
-    // 2. SCAN EMAIL MENGGUNAKAN REGEX
-    // Kita gabungkan semua sumber teks untuk mencari alamat @gmail.com
+    const profileAttr = profileBtn
+      ? profileBtn.getAttribute("aria-label") || profileBtn.title || ""
+      : "";
+    const headerText = document.querySelector(".ahS4be")?.innerText || "";
+
+    // 2. SCAN EMAIL (Broad Regex: Support @gmail.com, @uksw.edu, dll)
+    // Regex ini bakal nangkep email apapun yang ada di halaman
     const combinedText =
-      headerIdentity + " " + profileAttr + " " + document.body.innerText;
-    const emailMatch = combinedText.match(/[a-zA-Z0-9._%+-]+@gmail\.com/);
+      profileAttr + " " + headerText + " " + document.body.innerText;
+    const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+    const emailMatch = combinedText.match(emailRegex);
     const userEmail = emailMatch ? emailMatch[0] : null;
 
-    // 3. LOGIKA EKSTRAKSI NAMA (Email Prefix -> Initial)
+    // 3. LOGIKA EKSTRAKSI NAMA (Email -> Nama Depan -> Inisial)
     let finalName = "Google User";
 
     if (userEmail) {
-      // Ambil bagian depan email: misal 'erlan.project@gmail.com'
-      // Kita potong berdasarkan '@', lalu '.' atau '_'
+      // Misal: erlan.project@uksw.edu -> ambil 'erlan'
       let prefix = userEmail.split("@")[0].split(".")[0].split("_")[0];
       finalName = prefix.charAt(0).toUpperCase() + prefix.slice(1);
-    } else if (headerIdentity && headerIdentity.length < 50) {
-      // Jika email gak ketemu tapi ada teks pendek di header, ambil itu
-      finalName = headerIdentity.split("\n")[0].trim();
+    } else if (headerText && headerText.length < 50) {
+      finalName = headerText.split("\n")[0].trim();
     }
 
-    // 4. CARI AVATAR (FOTO PROFIL)
+    // 4. CARI FOTO PROFIL (AVATAR)
     const imgSelectors = [
       "img.gb_A",
       ".VvE39b img",
@@ -277,23 +276,22 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       }
     }
 
-    // 5. DEBUGGING (Lihat di Console F12)
-    console.log("🚀 Profile Scan Result:", {
+    // 5. DEBUGGING (Pantau di Console F12)
+    console.log("🚀 Profile Success:", {
       email: userEmail,
       name: finalName,
-      avatarFound: !!foundAvatar,
+      avatar: foundAvatar ? "Ada" : "Inisial",
     });
 
     sendResponse({ name: finalName, avatar: foundAvatar });
   } else if (request.action === "getStats") {
-    // Sinkronisasi data kuota ke popup
     StatsManager.getStats().then((stats) => {
       sendResponse({ stats });
     });
     return true;
   }
 
-  return true; // Channel tetap terbuka untuk async response
+  return true;
 });
 
 setInterval(injectAI, 1500);
