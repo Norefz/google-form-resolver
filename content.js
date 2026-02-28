@@ -225,22 +225,70 @@ function createGlobalBar() {
   document.body.appendChild(bar);
 }
 
-// --- 8. LISTENERS ---
+// --- 8. LISTENERS (VERSI DETEKTIF ANTI-GOOGLE USER) ---
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "solveAll") {
     solveAllQuestions();
     sendResponse({ status: "started" });
   } else if (request.action === "getUserInfo") {
-    // Ambil info nama user dari elemen Google Form
-    const userName =
-      document.querySelector(".S94Y7b")?.innerText || "Google User";
-    const userAvatar = document.querySelector(".gb_A img")?.src || null;
-    sendResponse({ name: userName, avatar: userAvatar });
+    // 1. Cari email di seluruh teks halaman (Fallback paling kuat)
+    const emailMatch = document.body.innerText.match(
+      /[a-zA-Z0-9._%+-]+@gmail\.com/,
+    );
+
+    // 2. Daftar Selector Nama (Urut dari yang paling akurat di Google Form terbaru)
+    const nameSelectors = [
+      ".ahS4be", // Header standar Google Form
+      ".S94Y7b", // Selector lama lo
+      ".idZ6ue", // Akun email di bagian atas
+      '[aria-label*="Account information"]', // Atribut aksesibilitas
+      '.gb_A[aria-label*="@"]', // Tombol akun di pojok kanan
+    ];
+
+    let foundName = null;
+    for (let selector of nameSelectors) {
+      const el = document.querySelector(selector);
+      if (el) {
+        // Ambil teks atau atribut label jika elemen berupa tombol/gambar
+        foundName = el.innerText || el.getAttribute("aria-label") || el.title;
+        if (foundName) break;
+      }
+    }
+
+    // 3. Cleaning Nama: Hapus teks "Google Account" atau ambil email jika nama null
+    let finalName = foundName || (emailMatch ? emailMatch[0] : "Google User");
+    finalName = finalName.replace("Google Account: ", "").split("(")[0].trim();
+
+    // 4. Cari Avatar (Mencari gambar profil asli, bukan clear.gif)
+    const avatarSelectors = [
+      "img.gb_A",
+      ".VvE39b img",
+      ".gb_d img",
+      'img[src*="googleusercontent.com"]',
+    ];
+
+    let foundAvatar = null;
+    for (let selector of avatarSelectors) {
+      const img = document.querySelector(selector);
+      if (img && img.src && !img.src.includes("clear.gif")) {
+        foundAvatar = img.src;
+        break;
+      }
+    }
+
+    console.log("🔍 Detective Result:", {
+      name: finalName,
+      avatar: foundAvatar,
+    });
+    sendResponse({ name: finalName, avatar: foundAvatar });
   } else if (request.action === "getStats") {
     // Dipakai popup.js untuk ambil data kuota
-    StatsManager.getStats().then((stats) => sendResponse({ stats }));
-    return true;
+    StatsManager.getStats().then((stats) => {
+      sendResponse({ stats });
+    });
+    return true; // Menjaga async agar tidak timeout
   }
+
   return true;
 });
 
