@@ -225,71 +225,75 @@ function createGlobalBar() {
   document.body.appendChild(bar);
 }
 
-// --- 8. LISTENERS (VERSI DETEKTIF ANTI-GOOGLE USER) ---
+// --- 8. LISTENERS (FULL VERSION: ANTI-NULL & INITIALS) ---
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "solveAll") {
     solveAllQuestions();
     sendResponse({ status: "started" });
   } else if (request.action === "getUserInfo") {
-    // 1. Cari email di seluruh teks halaman (Fallback paling kuat)
-    const emailMatch = document.body.innerText.match(
-      /[a-zA-Z0-9._%+-]+@gmail\.com/,
-    );
+    // 1. CARI IDENTITAS DI BERBAGAI TITIK (Agresif)
+    // Cek Header Form (ahS4be), Profil Kanan Atas (gb_A), dan teks halaman
+    const headerIdentity = document.querySelector(".ahS4be")?.innerText || "";
+    const profileBtn =
+      document.querySelector(".gb_A") ||
+      document.querySelector('[aria-label*="Google Account"]');
+    const profileAttr = profileBtn
+      ? profileBtn.getAttribute("aria-label") || profileBtn.title
+      : "";
 
-    // 2. Daftar Selector Nama (Urut dari yang paling akurat di Google Form terbaru)
-    const nameSelectors = [
-      ".ahS4be", // Header standar Google Form
-      ".S94Y7b", // Selector lama lo
-      ".idZ6ue", // Akun email di bagian atas
-      '[aria-label*="Account information"]', // Atribut aksesibilitas
-      '.gb_A[aria-label*="@"]', // Tombol akun di pojok kanan
-    ];
+    // 2. SCAN EMAIL MENGGUNAKAN REGEX
+    // Kita gabungkan semua sumber teks untuk mencari alamat @gmail.com
+    const combinedText =
+      headerIdentity + " " + profileAttr + " " + document.body.innerText;
+    const emailMatch = combinedText.match(/[a-zA-Z0-9._%+-]+@gmail\.com/);
+    const userEmail = emailMatch ? emailMatch[0] : null;
 
-    let foundName = null;
-    for (let selector of nameSelectors) {
-      const el = document.querySelector(selector);
-      if (el) {
-        // Ambil teks atau atribut label jika elemen berupa tombol/gambar
-        foundName = el.innerText || el.getAttribute("aria-label") || el.title;
-        if (foundName) break;
-      }
+    // 3. LOGIKA EKSTRAKSI NAMA (Email Prefix -> Initial)
+    let finalName = "Google User";
+
+    if (userEmail) {
+      // Ambil bagian depan email: misal 'erlan.project@gmail.com'
+      // Kita potong berdasarkan '@', lalu '.' atau '_'
+      let prefix = userEmail.split("@")[0].split(".")[0].split("_")[0];
+      finalName = prefix.charAt(0).toUpperCase() + prefix.slice(1);
+    } else if (headerIdentity && headerIdentity.length < 50) {
+      // Jika email gak ketemu tapi ada teks pendek di header, ambil itu
+      finalName = headerIdentity.split("\n")[0].trim();
     }
 
-    // 3. Cleaning Nama: Hapus teks "Google Account" atau ambil email jika nama null
-    let finalName = foundName || (emailMatch ? emailMatch[0] : "Google User");
-    finalName = finalName.replace("Google Account: ", "").split("(")[0].trim();
-
-    // 4. Cari Avatar (Mencari gambar profil asli, bukan clear.gif)
-    const avatarSelectors = [
+    // 4. CARI AVATAR (FOTO PROFIL)
+    const imgSelectors = [
       "img.gb_A",
       ".VvE39b img",
       ".gb_d img",
       'img[src*="googleusercontent.com"]',
     ];
-
     let foundAvatar = null;
-    for (let selector of avatarSelectors) {
-      const img = document.querySelector(selector);
+    for (let sel of imgSelectors) {
+      const img = document.querySelector(sel);
       if (img && img.src && !img.src.includes("clear.gif")) {
         foundAvatar = img.src;
         break;
       }
     }
 
-    console.log("🔍 Detective Result:", {
+    // 5. DEBUGGING (Lihat di Console F12)
+    console.log("🚀 Profile Scan Result:", {
+      email: userEmail,
       name: finalName,
-      avatar: foundAvatar,
+      avatarFound: !!foundAvatar,
     });
+
     sendResponse({ name: finalName, avatar: foundAvatar });
   } else if (request.action === "getStats") {
-    // Dipakai popup.js untuk ambil data kuota
+    // Sinkronisasi data kuota ke popup
     StatsManager.getStats().then((stats) => {
       sendResponse({ stats });
     });
-    return true; // Menjaga async agar tidak timeout
+    return true;
   }
 
-  return true;
+  return true; // Channel tetap terbuka untuk async response
 });
 
 setInterval(injectAI, 1500);
