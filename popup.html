@@ -14,7 +14,7 @@
         background: #f8f9fa;
         padding: 15px;
         border-radius: 12px;
-        margin-bottom: 20px;
+        margin-bottom: 15px;
         border: 1px solid #e0e0e0;
       }
       .avatar {
@@ -30,9 +30,8 @@
         font-weight: bold;
         margin: 0 auto 12px;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        overflow: hidden; /* Tambahan: Biar foto gak keluar jalur */
+        overflow: hidden;
       }
-      /* Tambahan: CSS khusus untuk foto profil Chrome */
       .avatar img {
         width: 100%;
         height: 100%;
@@ -44,7 +43,6 @@
         font-weight: 600;
         color: #202124;
         margin: 0;
-        /* Biar teks gak kepanjangan */
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -57,6 +55,49 @@
         letter-spacing: 1px;
         font-weight: bold;
       }
+
+      /* --- NEW: CSS UNTUK STATS & QUOTA --- */
+      .stats-panel {
+        background: #ffffff;
+        border: 1px solid #e0e0e0;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 15px;
+      }
+      .stats-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+      }
+      .stat-item {
+        text-align: left;
+      }
+      .stat-label {
+        display: block;
+        font-size: 10px;
+        color: #5f6368;
+        text-transform: uppercase;
+        font-weight: bold;
+      }
+      .stat-value {
+        font-size: 16px;
+        font-weight: bold;
+        color: #202124;
+      }
+      .progress-container {
+        width: 100%;
+        background-color: #e8eaed;
+        height: 6px;
+        border-radius: 3px;
+        overflow: hidden;
+      }
+      .progress-bar {
+        width: 0%; /* Diupdate lewat popup.js */
+        height: 100%;
+        background-color: #1a73e8;
+        transition: width 0.3s ease;
+      }
+
       .solve-btn {
         width: 100%;
         padding: 12px;
@@ -73,7 +114,7 @@
         gap: 8px;
         transition: all 0.2s;
       }
-      .solve-btn:hover {
+      .solve-btn:hover:not(:disabled) {
         background-color: #1765cc;
         transform: translateY(-1px);
       }
@@ -95,11 +136,27 @@
       <div class="user-role">Premium Student</div>
     </div>
 
+    <div class="stats-panel">
+      <div class="stats-row">
+        <div class="stat-item">
+          <span class="stat-label">Solved</span>
+          <span class="stat-value" id="solvedCount">0</span>
+        </div>
+        <div class="stat-item" style="text-align: right">
+          <span class="stat-label">Remaining</span>
+          <span class="stat-value" id="quotaLeft">50</span>
+        </div>
+      </div>
+      <div class="progress-container">
+        <div class="progress-bar" id="quotaProgress"></div>
+      </div>
+    </div>
+
     <button id="solveAllBtn" class="solve-btn">
       <span>Solve All Problems</span> ✨
     </button>
 
-    <div class="footer-text">Gemma 3 1B Engine • Connected</div>
+    <div class="footer-text">Gemma Engine • Daily Quota Managed</div>
 
     <script src="popup.js"></script>
   </body>

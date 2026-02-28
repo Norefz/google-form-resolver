@@ -9,11 +9,49 @@ app.use(express.json());
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
+// --- 1. KONFIGURASI DAILY QUOTA ---
+const DAILY_QUOTA = 50;
+
+// In-memory storage untuk stats sederhana
+let dailyStats = {
+  date: new Date().toDateString(),
+  solved: 0,
+};
+
+// Fungsi reset otomatis jika hari berganti
+function checkAndResetDailyStats() {
+  const today = new Date().toDateString();
+  if (dailyStats.date !== today) {
+    dailyStats = { date: today, solved: 0 };
+    console.log("📅 Hari berganti, kuota direset!");
+  }
+}
+
+// --- 2. ENDPOINT UNTUK CEK STATS ---
+app.get("/api/stats", (req, res) => {
+  checkAndResetDailyStats();
+  res.json({
+    solved: dailyStats.solved,
+    limit: DAILY_QUOTA,
+    remaining: Math.max(0, DAILY_QUOTA - dailyStats.solved),
+  });
+});
+
 app.post("/api/solve", async (req, res) => {
+  checkAndResetDailyStats();
+
+  // Cek apakah kuota masih ada sebelum panggil AI
+  if (dailyStats.solved >= DAILY_QUOTA) {
+    return res.status(429).json({
+      answer: "Kuota harian habis",
+      reason: "Limit 50 soal tercapai. Coba lagi besok!",
+      quota: { solved: dailyStats.solved, limit: DAILY_QUOTA, remaining: 0 },
+    });
+  }
+
   const { question, options } = req.body;
   const isMultipleChoice = options && options.length > 0;
 
-  // --- MASTER PROMPT TEROPTIMASI ---
   const prompt = `
 Role: Expert Academic Professor.
 Task: Provide a high-quality answer to the question below.
@@ -36,12 +74,12 @@ Strict Rules for Response:
    - Start immediately with the answer.
    - NEVER use "The answer is..." or intro phrases.
 
-Final Answer:`; // Fungsi internal untuk eksekusi AI dengan fitur Retry
+Final Answer:`;
+
   const generateAnswer = async (retries = 3) => {
     try {
-      // Pastikan nama model benar (Gemini 1.5 Flash adalah versi stabil yang ada sekarang)
-      // const model = genAI.getGenerativeModel({ model: "gemini-3-flash" });
-      const model = genAI.getGenerativeModel({ model: "gemma-3-4b-it" });
+      // PAKAI MODEL INI BIAR GAK ERROR 404
+      const model = genAI.getGenerativeModel({ model: "gemma-3-4b-bit" });
 
       const result = await model.generateContent({
         contents: [{ role: "user", parts: [{ text: prompt }] }],
@@ -53,32 +91,42 @@ Final Answer:`; // Fungsi internal untuk eksekusi AI dengan fitur Retry
 
       return result.response.text().trim();
     } catch (error) {
-      // Jika kena limit (Rate Limit 429) dan masih ada jatah retry
       if (error.message.includes("429") && retries > 0) {
-        console.warn(
-          `⚠️ Limit tercapai. Mencoba lagi dalam 5 detik... (Sisa retry: ${retries})`,
-        );
-        await new Promise((resolve) => setTimeout(resolve, 5000)); // Nunggu 5 detik
+        console.warn(`⚠️ Limit tercapai. Mencoba lagi dalam 5 detik...`);
+        await new Promise((resolve) => setTimeout(resolve, 5000));
         return generateAnswer(retries - 1);
       }
-      throw error; // Lempar error jika bukan 429 atau retry habis
+      throw error;
     }
   };
 
   try {
     const aiResponse = await generateAnswer();
-    console.log("AI Response:", aiResponse);
+
+    // UPDATE STATS SETELAH BERHASIL
+    dailyStats.solved++;
+    console.log(`✅ Berhasil: ${dailyStats.solved}/${DAILY_QUOTA}`);
 
     res.json({
       answer: aiResponse,
       reason: "Success",
       type: isMultipleChoice ? "multiple" : "essay",
+      quota: {
+        solved: dailyStats.solved,
+        limit: DAILY_QUOTA,
+        remaining: DAILY_QUOTA - dailyStats.solved,
+      },
     });
   } catch (error) {
     console.error("Final Error:", error.message);
     res.status(500).json({
       answer: "Gagal memproses soal",
-      reason: "Server limit atau API error. Coba lagi beberapa saat lagi.",
+      reason: "Server limit atau API error.",
+      quota: {
+        solved: dailyStats.solved,
+        limit: DAILY_QUOTA,
+        remaining: DAILY_QUOTA - dailyStats.solved,
+      },
     });
   }
 });

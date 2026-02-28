@@ -3,20 +3,51 @@ document.addEventListener("DOMContentLoaded", function () {
   const avatarEl = document.getElementById("avatarLetter");
   const solveBtn = document.getElementById("solveAllBtn");
 
+  // --- ELEMENT BARU UNTUK STATS ---
+  const solvedCountEl = document.getElementById("solvedCount");
+  const quotaLeftEl = document.getElementById("quotaLeft");
+  const quotaProgressEl = document.getElementById("quotaProgress");
+
   console.log("🚀 Popup opened, connecting to Google Form...");
 
-  // 1. Ambil tab yang sedang aktif
+  // 1. Fungsi untuk Update UI Stats
+  function updateStatsUI() {
+    chrome.storage.local.get(["ai_stats"], (data) => {
+      if (data.ai_stats) {
+        const { solved, limit, remaining } = data.ai_stats;
+
+        if (solvedCountEl) solvedCountEl.innerText = solved;
+        if (quotaLeftEl) quotaLeftEl.innerText = remaining;
+
+        // Update Progress Bar
+        if (quotaProgressEl) {
+          const percent = (solved / limit) * 100;
+          quotaProgressEl.style.width = Math.min(percent, 100) + "%";
+        }
+
+        // Disable tombol jika kuota habis
+        if (remaining <= 0 && solveBtn) {
+          solveBtn.disabled = true;
+          solveBtn.innerText = "Quota Exhausted 🔋";
+          solveBtn.style.backgroundColor = "#bdc1c6";
+        }
+      }
+    });
+  }
+
+  // Jalankan update stats saat popup dibuka
+  updateStatsUI();
+
+  // 2. Ambil tab yang sedang aktif & Info User
   chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
     const currentTab = tabs[0];
 
-    // Cek apakah user sedang membuka Google Form
     if (!currentTab || !currentTab.url.includes("docs.google.com/forms")) {
       nameEl.innerText = "Buka Google Form dulu";
       if (solveBtn) solveBtn.disabled = true;
       return;
     }
 
-    // 2. Minta data User (Nama & Avatar) ke content.js
     chrome.tabs.sendMessage(
       currentTab.id,
       { action: "getUserInfo" },
@@ -28,26 +59,16 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         if (res) {
-          console.log("✅ Data received in popup:", res);
-
-          // Render Nama
           nameEl.innerText = res.name || "Google User";
 
-          // Render Avatar (Foto atau Inisial)
           if (res.avatar && res.avatar !== null) {
-            // Jika foto profil ditemukan: Pasang sebagai Background agar rapi (cover)
-            avatarEl.innerText = ""; // Hapus teks "?" atau inisial
+            avatarEl.innerText = "";
             avatarEl.style.backgroundImage = `url('${res.avatar}')`;
             avatarEl.style.backgroundSize = "cover";
             avatarEl.style.backgroundPosition = "center";
-            avatarEl.style.border = "2px solid #fff";
           } else {
-            // Jika foto profil TIDAK ditemukan: Tampilkan inisial huruf
             const initial = res.name ? res.name.charAt(0).toUpperCase() : "?";
             avatarEl.innerText = initial;
-            avatarEl.style.backgroundImage = "none";
-
-            // Beri warna background berdasarkan huruf (biar variatif)
             const colors = [
               "#1a73e8",
               "#d93025",
@@ -67,19 +88,30 @@ document.addEventListener("DOMContentLoaded", function () {
   // 3. Logika tombol Solve All
   if (solveBtn) {
     solveBtn.onclick = function () {
-      this.disabled = true;
-      const originalText = this.innerHTML;
-      this.innerHTML = "Solving... 🚀";
+      // Cek kuota sekali lagi sebelum jalan
+      chrome.storage.local.get(["ai_stats"], (data) => {
+        const remaining = data.ai_stats?.remaining ?? 50;
 
-      chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-        chrome.tabs.sendMessage(
-          tabs[0].id,
-          { action: "solveAll" },
-          function (response) {
-            // Popup ditutup otomatis setelah 1 detik agar user bisa lihat prosesnya
-            setTimeout(() => {
-              window.close();
-            }, 1000);
+        if (remaining <= 0) {
+          alert("Daily quota habis! Coba lagi besok.");
+          return;
+        }
+
+        this.disabled = true;
+        this.innerHTML = "Solving... 🚀";
+
+        chrome.tabs.query(
+          { active: true, currentWindow: true },
+          function (tabs) {
+            chrome.tabs.sendMessage(
+              tabs[0].id,
+              { action: "solveAll" },
+              function (response) {
+                setTimeout(() => {
+                  window.close();
+                }, 1500);
+              },
+            );
           },
         );
       });
