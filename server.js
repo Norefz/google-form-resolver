@@ -79,7 +79,7 @@ Final Answer:`;
   const generateAnswer = async (retries = 3) => {
     try {
       // PAKAI MODEL INI BIAR GAK ERROR 404
-      const model = genAI.getGenerativeModel({ model: "gemma-3-4b-bit" });
+      const model = genAI.getGenerativeModel({ model: "gemma-3-4b-it" });
 
       const result = await model.generateContent({
         contents: [{ role: "user", parts: [{ text: prompt }] }],

@@ -5,7 +5,7 @@
   "description": "Asisten AI untuk membantu menjawab Google Forms",
   "host_permissions": [
     "https://*.googleusercontent.com/*",
-    ["http://localhost:3000/*"],
+    "http://localhost:3000/*",
     "https://lh3.googleusercontent.com/*",
     "https://*.google.com/*"
   ],
