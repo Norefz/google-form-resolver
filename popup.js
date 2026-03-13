@@ -25,7 +25,7 @@ document.addEventListener("DOMContentLoaded", function () {
           quotaProgressEl.style.width = Math.min(percent, 100) + "%";
         }
 
-        // Handle kondisi kuota habis
+        // Handle Quota when Run out
         if (remaining <= 0 && solveBtn) {
           solveBtn.disabled = true;
           solveBtn.innerText = "Quota Exhausted 🔋";
@@ -43,12 +43,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Validate if on Google Form
     if (!currentTab || !currentTab.url.includes("docs.google.com/forms")) {
-      nameEl.innerText = "Buka Google Form dulu";
+      nameEl.innerText = "Please Open Google Form First";
       if (solveBtn) solveBtn.disabled = true;
       return;
     }
 
-    // Kirim pesan ke content.js untuk ambil nama & foto
+    // Send  content.js to take profile chrome users
     chrome.tabs.sendMessage(
       currentTab.id,
       { action: "getUserInfo" },
@@ -60,10 +60,9 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         if (res) {
-          // Update Nama
+          // Update Name
           nameEl.innerText = res.name || "Google User";
 
-          // Update Avatar (Gambar vs Inisial)
           if (
             res.avatar &&
             res.avatar !== null &&
