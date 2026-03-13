@@ -18,11 +18,12 @@ A Chrome extension that automatically answers Google Forms using Google Gemini A
 ## Setup
 
 1. **Install dependencies**:
+
    ```bash
    npm install
    ```
 
-2. **Configure API key**:
+2. Configure API key\*\*:
    - Get your Gemini API key from [Google AI Studio](https://aistudio.google.com/app/apikey)
    - Create a `.env` file:
      ```
@@ -30,6 +31,7 @@ A Chrome extension that automatically answers Google Forms using Google Gemini A
      ```
 
 3. **Start the server**:
+
    ```bash
    node server.js
    ```
@@ -49,7 +51,3 @@ A Chrome extension that automatically answers Google Forms using Google Gemini A
 
 - `GET /api/stats` - Get current quota status
 - `POST /api/solve` - Solve a question (body: `{ question, options }`)
-
-## License
-
-ISC
