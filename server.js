@@ -9,16 +9,16 @@ app.use(express.json());
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// --- 1. KONFIGURASI DAILY QUOTA ---
+// --- 1. DAILY QUOTA CONFIGURATION ---
 const DAILY_QUOTA = 50;
 
-// In-memory storage untuk stats sederhana
+// In-memory storage for simple stats
 let dailyStats = {
   date: new Date().toDateString(),
   solved: 0,
 };
 
-// Fungsi reset otomatis jika hari berganti
+// Auto reset function when day changes
 function checkAndResetDailyStats() {
   const today = new Date().toDateString();
   if (dailyStats.date !== today) {
@@ -27,7 +27,7 @@ function checkAndResetDailyStats() {
   }
 }
 
-// --- 2. ENDPOINT UNTUK CEK STATS ---
+// --- 2. ENDPOINT TO CHECK STATS ---
 app.get("/api/stats", (req, res) => {
   checkAndResetDailyStats();
   res.json({
@@ -43,8 +43,8 @@ app.post("/api/solve", async (req, res) => {
   // Cek apakah kuota masih ada sebelum panggil AI
   if (dailyStats.solved >= DAILY_QUOTA) {
     return res.status(429).json({
-      answer: "Kuota harian habis",
-      reason: "Limit 50 soal tercapai. Coba lagi besok!",
+      answer: "Daily quota exhausted",
+      reason: "50 question limit reached. Try again tomorrow!",
       quota: { solved: dailyStats.solved, limit: DAILY_QUOTA, remaining: 0 },
     });
   }
@@ -78,7 +78,7 @@ Final Answer:`;
 
   const generateAnswer = async (retries = 3) => {
     try {
-      // PAKAI MODEL INI BIAR GAK ERROR 404
+      // USE THIS MODEL TO AVOID 404 ERROR
       const model = genAI.getGenerativeModel({ model: "gemma-3-4b-it" });
 
       const result = await model.generateContent({
@@ -92,7 +92,7 @@ Final Answer:`;
       return result.response.text().trim();
     } catch (error) {
       if (error.message.includes("429") && retries > 0) {
-        console.warn(`⚠️ Limit tercapai. Mencoba lagi dalam 5 detik...`);
+        console.warn(`⚠️ Limit reached. Retrying in 5 seconds...`);
         await new Promise((resolve) => setTimeout(resolve, 5000));
         return generateAnswer(retries - 1);
       }
@@ -103,9 +103,9 @@ Final Answer:`;
   try {
     const aiResponse = await generateAnswer();
 
-    // UPDATE STATS SETELAH BERHASIL
+    // UPDATE STATS AFTER SUCCESS
     dailyStats.solved++;
-    console.log(`✅ Berhasil: ${dailyStats.solved}/${DAILY_QUOTA}`);
+    console.log(`✅ Success: ${dailyStats.solved}/${DAILY_QUOTA}`);
 
     res.json({
       answer: aiResponse,
@@ -120,7 +120,7 @@ Final Answer:`;
   } catch (error) {
     console.error("Final Error:", error.message);
     res.status(500).json({
-      answer: "Gagal memproses soal",
+      answer: "Failed to process question",
       reason: "Server limit atau API error.",
       quota: {
         solved: dailyStats.solved,

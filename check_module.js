@@ -4,7 +4,7 @@ async function listModelsDirectly() {
   const API_KEY = process.env.GEMINI_API_KEY;
   const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${API_KEY}`;
 
-  console.log("--- Menghubungi Server Google Langsung ---");
+  console.log("--- Connecting to Google Server Directly ---");
 
   try {
     const response = await fetch(url);
@@ -15,17 +15,17 @@ async function listModelsDirectly() {
       return;
     }
 
-    console.log("Model yang tersedia untuk API Key kamu:");
+    console.log("Models available for your API Key:");
     data.models.forEach((m) => {
-      // Kita cuma tampilin yang dukung generateContent
+      // Only show models that support generateContent
       if (m.supportedGenerationMethods.includes("generateContent")) {
         console.log(`- ${m.name.replace("models/", "")} (${m.displayName})`);
       }
     });
-    console.log("\n--- Selesai ---");
-    console.log("Gunakan nama di atas (tanpa 'models/') di server.js kamu.");
+  console.log("\n--- Done ---");
+  console.log("Use the name above (without 'models/') in your server.js.");
   } catch (err) {
-    console.error("Gagal koneksi:", err.message);
+    console.error("Connection failed:", err.message);
   }
 }
 

@@ -10,7 +10,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   console.log("🚀 Popup opened, connecting to Google Form...");
 
-  // 1. Fungsi untuk Update UI Stats dari Storage
+  // 1. Function to update UI Stats from Storage
   function updateStatsUI() {
     chrome.storage.local.get(["ai_stats"], (data) => {
       if (data.ai_stats) {
@@ -19,7 +19,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (solvedCountEl) solvedCountEl.innerText = solved;
         if (quotaLeftEl) quotaLeftEl.innerText = remaining;
 
-        // Update Progress Bar secara halus
+        // Update Progress Bar smoothly
         if (quotaProgressEl) {
           const percent = (solved / limit) * 100;
           quotaProgressEl.style.width = Math.min(percent, 100) + "%";
@@ -37,11 +37,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
   updateStatsUI();
 
-  // 2. Ambil Info User dari Content Script
+  // 2. Get User Info from Content Script
   chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
     const currentTab = tabs[0];
 
-    // Validasi apakah sedang di Google Form
+    // Validate if on Google Form
     if (!currentTab || !currentTab.url.includes("docs.google.com/forms")) {
       nameEl.innerText = "Buka Google Form dulu";
       if (solveBtn) solveBtn.disabled = true;
@@ -55,7 +55,7 @@ document.addEventListener("DOMContentLoaded", function () {
       function (res) {
         if (chrome.runtime.lastError) {
           console.error("❌ Error:", chrome.runtime.lastError.message);
-          nameEl.innerText = "Silahkan Refresh Halaman (F5)";
+          nameEl.innerText = "Please Refresh Page (F5)";
           return;
         }
 
@@ -70,12 +70,12 @@ document.addEventListener("DOMContentLoaded", function () {
             res.avatar.startsWith("http")
           ) {
             avatarEl.innerText = "";
-            avatarEl.style.background = "none"; // Hapus warna background agar gambar terlihat
+            // Remove background color so image is visible
             avatarEl.style.backgroundImage = `url('${res.avatar}')`;
             avatarEl.style.backgroundSize = "cover";
             avatarEl.style.backgroundPosition = "center";
           } else {
-            // Fallback ke Inisial jika foto tidak ada
+            // Fallback to Initial if no photo
             avatarEl.style.backgroundImage = "none";
             const initial = res.name ? res.name.charAt(0).toUpperCase() : "?";
             avatarEl.innerText = initial;
@@ -96,14 +96,14 @@ document.addEventListener("DOMContentLoaded", function () {
     );
   });
 
-  // 3. Logika Tombol Solve All
+  // 3. Solve All Button Logic
   if (solveBtn) {
     solveBtn.onclick = function () {
       chrome.storage.local.get(["ai_stats"], (data) => {
         const remaining = data.ai_stats?.remaining ?? 50;
 
         if (remaining <= 0) {
-          alert("Daily quota habis! Coba lagi besok.");
+          alert("Daily quota exhausted! Try again tomorrow.");
           return;
         }
 
@@ -117,7 +117,7 @@ document.addEventListener("DOMContentLoaded", function () {
               tabs[0].id,
               { action: "solveAll" },
               function (response) {
-                // Beri jeda sedikit sebelum menutup popup agar user lihat status sukses
+                // Add slight delay before closing popup so user can see status
                 setTimeout(() => {
                   window.close();
                 }, 1500);

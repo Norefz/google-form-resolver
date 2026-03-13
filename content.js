@@ -1,7 +1,7 @@
 const API_URL = "http://localhost:3000/api/solve";
 const STATS_URL = "http://localhost:3000/api/stats";
 
-// --- 1. KONFIGURASI SELECTOR ---
+// --- 1. Configure Selectors ---
 const SELECTORS = {
   questionBlock: ".geS5n",
   questionText: '.M7eMe, [role="heading"]',
@@ -28,7 +28,7 @@ style.innerHTML = `
 `;
 document.head.appendChild(style);
 
-// --- 3. STATS MANAGER (NEW: UNTUK TRACKING QUOTA) ---
+// --- 3. STATS MANAGER ( Tracking Quota) ---
 const StatsManager = {
   async getStats() {
     try {
@@ -43,7 +43,6 @@ const StatsManager = {
     try {
       const res = await fetch(STATS_URL);
       const serverData = await res.json();
-      // Simpan data dari server ke storage lokal chrome
       const stats = {
         solved: serverData.solved,
         limit: serverData.limit,
@@ -82,7 +81,7 @@ async function simulateHumanClick(el) {
   el.dispatchEvent(new MouseEvent("click", opts));
 }
 
-// --- 5. FUNGSI UTAMA: SOLVE ALL ---
+// --- 5.  SOLVE ALL ---
 async function solveAllQuestions() {
   const globalBar = document.querySelector(".ai-global-bar");
   const infoText = document.querySelector(".ai-global-info");
@@ -109,7 +108,6 @@ async function solveAllQuestions() {
     await new Promise((resolve) => setTimeout(resolve, randomWait));
 
     btn.click();
-    // Tunggu proses per soal selesai
     await new Promise((resolve) => setTimeout(resolve, 4500));
   }
 
@@ -119,7 +117,7 @@ async function solveAllQuestions() {
   }, 3000);
 }
 
-// --- 6. INJEKSI TOMBOL PER SOAL ---
+// --- 6. Innject each Questions ---
 function injectAI() {
   const blocks = document.querySelectorAll(SELECTORS.questionBlock);
   blocks.forEach((block) => {
@@ -230,7 +228,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     solveAllQuestions();
     sendResponse({ status: "started" });
   } else if (request.action === "getUserInfo") {
-    // 1. Ambil identitas dari tombol profil Google (biasanya ada email di aria-label/title)
     const profileBtn =
       document.querySelector('a[href*="accounts.google.com"]') ||
       document.querySelector(".gb_A") ||
@@ -241,8 +238,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       : "";
     const headerText = document.querySelector(".ahS4be")?.innerText || "";
 
-    // 2. SCAN EMAIL (Broad Regex: Support @gmail.com, @uksw.edu, dll)
-    // Regex ini bakal nangkep email apapun yang ada di halaman
     const combinedText =
       profileAttr + " " + headerText + " " + document.body.innerText;
     const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
