@@ -1,5 +1,5 @@
 #Place Your GEMINI_API_KEY in Here
-GEMINI_API_KEY=AIzaSyBez3rd_E_wZmu4qTnAhnncD9pS-wyVDys
+GEMINI_API_KEY=
 # The Port your local server will run on
 PORT=3000
 # Optional: Set environment to production or development
