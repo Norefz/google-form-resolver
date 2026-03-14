@@ -23,6 +23,10 @@ A Chrome extension that automatically answers Google Forms using Google Gemini A
    npm install
    ```
 
+   ```bash
+   npm install express cors dotenv @google/generative-ai
+   ```
+
 2. Configure API key\*\*:
    - Get your Gemini API key from [Google AI Studio](https://aistudio.google.com/app/apikey)
    - Create a `.env` file:
