@@ -41,6 +41,11 @@ A Chrome extension that automatically answers Google Forms using Google Gemini A
    - Enable "Developer mode"
    - Click "Load unpacked" and select the project folder
 
+5. **Check AI MODEL**:
+   ```bash
+   node check_module.js
+   ```
+
 ## Usage
 
 1. Open any Google Form
